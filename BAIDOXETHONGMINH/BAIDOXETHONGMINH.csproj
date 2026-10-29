@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Assets\" />
+      <Folder Include="DAL\Database\" />
+      <Folder Include="DTO\Entities\" />
+      <Folder Include="DTO\Models\" />
+      <Folder Include="Services\" />
+    </ItemGroup>
+
+</Project>
