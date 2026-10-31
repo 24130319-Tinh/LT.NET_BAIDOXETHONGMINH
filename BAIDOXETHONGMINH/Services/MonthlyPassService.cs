@@ -1,6 +1,6 @@
 namespace BAIDOXETHONGMINH.GUI;
 
-public class MonthlyPassService
+public class MonthlyPassService(PricingService pricing)
 {
     
 }

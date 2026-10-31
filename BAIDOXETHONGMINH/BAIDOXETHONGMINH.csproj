@@ -13,7 +13,6 @@
       <Folder Include="DAL\Database\" />
       <Folder Include="DTO\Entities\" />
       <Folder Include="DTO\Models\" />
-      <Folder Include="Services\" />
     </ItemGroup>
 
 </Project>
