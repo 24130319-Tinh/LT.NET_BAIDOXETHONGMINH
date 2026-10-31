@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Demo Desktop PC - Hệ thống Quản lý Bãi đỗ xe Thông minh (WinForms)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-4">
+
+  <!-- Toolbar điều khiển bản xem trước Desktop -->
+  <div class="max-w-[1240px] mx-auto mb-3 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 shadow-sm flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-base font-bold text-[var(--foreground)]">Bản thiết kế UI Desktop PC (WinForms 1280×760) — Bãi Đỗ Xe Thông Minh</h1>
+      <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
+        Giao diện cố định bố cục màn hình máy tính (Sidebar bên trái, các phân vùng chức năng chia cột ngang chuẩn Desktop App).
+      </p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button onclick="toggleFitMode()" id="btnFitMode"
+        class="text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] hover:opacity-90">
+        Thu vừa khung xem: BẬT
+      </button>
+      <label class="flex items-center gap-2 text-xs font-medium cursor-pointer select-none bg-[var(--secondary)] text-[var(--secondary-foreground)] px-3 py-1.5 rounded-lg border border-[var(--border)]">
+        <input type="checkbox" id="toggleHints" class="rounded" onchange="toggleWinFormsHints(this.checked)" />
+        <span>Chú thích Control WinForms</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Khung chứa màn hình Desktop cố định (Không bao giờ gộp dọc kiểu điện thoại) -->
+  <div id="desktopViewport" class="overflow-x-auto pb-4">
+    <div id="desktopWindowWrapper" class="origin-top-left transition-transform duration-150">
+      <div id="desktopWindow" class="w-[1180px] mx-auto bg-[var(--card)] border-2 border-[var(--border)] rounded-xl shadow-xl overflow-hidden">
+
+        <!-- Windows 11 Desktop Title Bar -->
+        <div class="bg-[var(--sidebar)] border-b border-[var(--border)] px-3.5 py-2 flex items-center justify-between select-none">
+          <div class="flex items-center gap-2.5">
+            <div class="w-5 h-5 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-xs">P</div>
+            <span class="text-xs font-semibold text-[var(--foreground)]">BAIDOXETHONGMINH.exe — Hệ thống Quản lý Bãi đỗ xe Thông minh (Desktop Admin)</span>
+            <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">Form (Size: 1280, 760 | StartPosition: CenterScreen)</span>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-[var(--muted-foreground)] px-1">
+            <span title="Minimize">&#8212;</span>
+            <span title="Maximize">&#9633;</span>
+            <span class="text-red-500 font-bold" title="Close">&#10005;</span>
+          </div>
+        </div>
+
+        <!-- Desktop Layout: Fixed Left Sidebar (250px) + Fixed Right Workspace -->
+        <div class="flex flex-row h-[680px]">
+
+          <!-- LEFT SIDEBAR (Dock = Left, Width = 250px) -->
+          <aside class="w-[255px] shrink-0 bg-[var(--sidebar)] border-r border-[var(--border)] p-3 flex flex-col justify-between">
+            <div>
+              <div class="wf-hint hidden mb-2 text-xs px-2 py-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">Panel pnlSidebar (Dock=Left, Width=255)</div>
+              <div class="px-2 py-1.5 mb-2 border-b border-[var(--border)] flex items-center justify-between">
+                <span class="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Menu Quản Lý</span>
+                <span class="text-xs text-[var(--muted-foreground)] font-mono">PC App</span>
+              </div>
+
+              <nav class="space-y-1.5" id="sidebarNav">
+                <button onclick="switchScreen('checkinout')" id="nav-checkinout" class="nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 bg-[var(--primary)] text-[var(--primary-foreground)]">
+                  <span>1. Kiểm soát Xe Vào / Ra</span>
+                  <span class="text-xs opacity-80">TV1 • frmCheckInOut</span>
+                </button>
+
+                <button onclick="switchScreen('map')" id="nav-map" class="nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 hover:bg-[var(--secondary)] text-[var(--foreground)]">
+                  <span>2. Sơ đồ bãi &amp; Bảng giá</span>
+                  <span class="text-xs text-[var(--muted-foreground)]">TV2 • frmParkingMap</span>
+                </button>
+
+                <!-- Mục 3: Tách rõ 2 nhánh con cho Quản lý Vé tháng -->
+                <div class="rounded-lg border border-[var(--border)] bg-[var(--card)]/60 p-1.5 space-y-1">
+                  <div class="px-2 py-1 text-xs font-bold text-[var(--foreground)]">
+                    3. Quản lý Vé tháng (TV2)
+                  </div>
+                  <button onclick="switchScreen('monthly-register')" id="nav-monthly-register" class="nav-btn w-full text-left pl-3.5 pr-2.5 py-1.5 rounded-md text-xs font-medium transition flex flex-col hover:bg-[var(--secondary)] text-[var(--foreground)]">
+                    <span>↳ 3.1 Đăng ký Vé tháng mới</span>
+                    <span class="text-xs text-[var(--muted-foreground)]">Tạo mới hồ sơ vé</span>
+                  </button>
+                  <button onclick="switchScreen('monthly-renew')" id="nav-monthly-renew" class="nav-btn w-full text-left pl-3.5 pr-2.5 py-1.5 rounded-md text-xs font-medium transition flex flex-col hover:bg-[var(--secondary)] text-[var(--foreground)]">
+                    <span>↳ 3.2 Gia hạn &amp; Cập nhật vé</span>
+                    <span class="text-xs text-[var(--muted-foreground)]">Gia hạn / Sửa / Hủy</span>
+                  </button>
+                </div>
+
+                <button onclick="switchScreen('report')" id="nav-report" class="nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 hover:bg-[var(--secondary)] text-[var(--foreground)]">
+                  <span>4. Tra cứu &amp; Thống kê</span>
+                  <span class="text-xs text-[var(--muted-foreground)]">TV3 • frmSearchReport</span>
+                </button>
+
+                <button onclick="switchScreen('login')" id="nav-login" class="nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 hover:bg-[var(--secondary)] text-[var(--foreground)]">
+                  <span>5. Màn hình Đăng nhập</span>
+                  <span class="text-xs text-[var(--muted-foreground)]">TV3 • frmLogin (Dialog)</span>
+                </button>
+              </nav>
+            </div>
+
+            <!-- THÔNG TIN CA TRỰC + AVATAR BÊN PHẢI -->
+            <div class="p-3 rounded-xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
+              <div class="wf-hint hidden mb-1.5 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">Panel + PictureBox picAvatar</div>
+              <div class="flex items-center justify-between gap-2.5">
+                <!-- Thông tin chữ bên trái -->
+                <div class="text-xs space-y-1 min-w-0">
+                  <div class="font-bold text-[var(--foreground)]">Thông tin Ca trực</div>
+                  <div class="text-[var(--muted-foreground)] truncate">Quản lý: <strong class="text-[var(--foreground)]">Admin Tính</strong></div>
+                  <div class="text-[var(--muted-foreground)]">Ca: <span class="text-emerald-600 dark:text-emerald-400 font-semibold">Ca Sáng (06h-14h)</span></div>
+                  <div class="text-[var(--muted-foreground)]">Chỗ trống: <strong id="sidebarFreeCount" class="text-[var(--foreground)]">13 / 20 ô</strong></div>
+                </div>
+
+                <!-- Hình Avatar bên phải -->
+                <div class="relative shrink-0">
+                  <div class="w-12 h-12 rounded-full bg-blue-600/15 border-2 border-blue-500 flex items-center justify-center overflow-hidden">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 mt-1" fill="currentColor" viewBox="0 0 24 24">
+                      <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[var(--card)]" title="Đang trực"></span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- RIGHT MAIN WORKSPACE (Dock = Fill, Always Desktop Multi-Column) -->
+          <main class="flex-1 p-4 bg-[var(--background)] overflow-y-auto">
+            <div class="wf-hint hidden mb-2.5 text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">
+              Panel pnlWorkspace (Dock = Fill) — Chứa TableLayoutPanel chia cột ngang chuẩn màn hình máy tính
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 1: frmCheckInOut (Luôn chia 2 cột ngang Trái/Phải) -->
+            <!-- ========================================================= -->
+            <section id="screen-checkinout" class="space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 class="text-base font-bold">BÀN ĐIỀU KHIỂN XE VÀO / XE RA (CHỌN HÌNH TỪ MÁY &amp; NHẬP THỦ CÔNG)</h2>
+                  <p class="text-xs text-[var(--muted-foreground)]">Thành viên 1 • Không dùng Camera — Dùng <code>OpenFileDialog</code> chọn file ảnh xe và nhập tay các trường thông tin</p>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded bg-[var(--secondary)] border border-[var(--border)] font-mono">Phím tắt PC: F1 / F2</span>
+              </div>
+
+              <!-- Fixed 2-Column Desktop Split -->
+              <div class="grid grid-cols-2 gap-4">
+
+                <!-- CỘT TRÁI: XE VÀO BÃI -->
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase">Làn Vào — Ghi nhận Xe Vào Bãi</h3>
+                    <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">GroupBox grpCheckIn</span>
+                  </div>
+
+                  <!-- Khung PictureBox chọn hình ảnh từ máy tính -->
+                  <div class="space-y-2">
+                    <div class="relative rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] h-40 flex flex-col items-center justify-center p-2 overflow-hidden">
+                      <span class="wf-hint hidden absolute top-1.5 left-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">PictureBox picVehicleIn</span>
+                      <img id="uploadedImgIn" class="hidden max-h-36 rounded object-contain" alt="Ảnh xe vào" />
+                      <div id="emptyImgPlaceholderIn" class="flex flex-col items-center text-center px-3">
+                        <svg class="w-10 h-10 text-[var(--muted-foreground)] mb-1" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                        </svg>
+                        <span class="text-xs font-semibold">Khung hiển thị hình xe tải lên</span>
+                        <span class="text-xs text-[var(--muted-foreground)]">Bấm "Chọn hình từ máy..." để mở hộp thoại chọn file ảnh</span>
+                      </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                      <input type="text" id="txtImagePathIn" placeholder="Đường dẫn file ảnh (C:\Images\xe_01.jpg)..." readonly
+                        class="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] font-mono" />
+                      <input type="file" id="filePickerIn" accept="image/*" class="hidden" onchange="handleManualImagePick(event)" />
+                      <button onclick="document.getElementById('filePickerIn').click()"
+                        class="py-1.5 px-3 rounded-lg bg-[var(--secondary)] hover:opacity-90 border border-[var(--border)] text-xs font-semibold shrink-0">
+                        Chọn hình từ máy...
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Các ô nhập thủ công trên máy tính -->
+                  <div class="grid grid-cols-2 gap-2.5 text-xs">
+                    <div>
+                      <label class="block font-medium text-[var(--muted-foreground)] mb-1">Nhập Biển số xe (*)</label>
+                      <input type="text" id="txtPlateIn" placeholder="VD: 59A1-686.86" oninput="handlePlateInChange(this.value)"
+                        class="w-full px-2.5 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono font-bold text-sm" />
+                    </div>
+                    <div>
+                      <label class="block font-medium text-[var(--muted-foreground)] mb-1">Chọn Loại xe (*)</label>
+                      <select id="cboVehicleTypeIn" onchange="updateSuggestedSlot()"
+                        class="w-full px-2.5 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-sm">
+                        <option value="XEMAY">Xe máy (Khu A)</option>
+                        <option value="OTO">Ô tô (Khu B)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block font-medium text-[var(--muted-foreground)] mb-1">Chọn Mã thẻ cấp (*)</label>
+                      <select id="cboCardIn" class="w-full px-2.5 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono text-sm">
+                        <option value="THE008">THE008 (Trống)</option>
+                        <option value="THE009">THE009 (Trống)</option>
+                        <option value="THE010">THE010 (Trống)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block font-medium text-[var(--muted-foreground)] mb-1">Chọn Vị trí đỗ (*)</label>
+                      <input type="text" id="txtSuggestedSlot" value="A-03 (Trống)"
+                        class="w-full px-2.5 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] font-semibold text-sm" />
+                    </div>
+                  </div>
+
+                  <div class="px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs flex items-center justify-between">
+                    <span>Đối chiếu Vé tháng: <strong id="lblPassStatusIn">Chưa nhập biển số</strong></span>
+                    <span class="text-[var(--muted-foreground)]">Test mã: <code class="font-mono font-bold">51H-999.99</code></span>
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button onclick="simulateCheckIn()" class="flex-1 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition">
+                      [F1] Cho Xe Vào Bãi &amp; Lưu CSDL
+                    </button>
+                    <button onclick="resetCheckInForm()" class="py-2.5 px-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-xs font-medium">
+                      Xóa trắng
+                    </button>
+                  </div>
+                  <div id="checkinToast" class="hidden text-xs font-medium px-3 py-1.5 rounded-lg"></div>
+                </div>
+
+                <!-- CỘT PHẢI: XE RA BÃI & ĐỐI CHIẾU TÍNH TIỀN -->
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase">Làn Ra — Đối Chiếu Hình &amp; Tính Tiền</h3>
+                    <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">GroupBox grpCheckOut</span>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <select id="cboDemoCheckoutSelect" onchange="loadCheckoutSample(this.value)"
+                      class="flex-1 px-2.5 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs font-mono">
+                      <option value="OTO_TURN">Nhập mã thẻ: THE002 — Biển số 51G-456.78 (Ô tô • Vé lượt)</option>
+                      <option value="XM_TURN">Nhập mã thẻ: THE001 — Biển số 59X3-112.23 (Xe máy • Vé lượt)</option>
+                      <option value="OTO_MONTH">Nhập mã thẻ: THE003 — Biển số 51H-999.99 (Ô tô • Vé tháng)</option>
+                    </select>
+                    <button onclick="loadCheckoutSample(document.getElementById('cboDemoCheckoutSelect').value)" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold shrink-0">
+                      Tìm lượt vào
+                    </button>
+                  </div>
+
+                  <!-- Khung đối chiếu 2 cột ngang: Hình đã lưu lúc vào + Thông tin -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-lg border border-[var(--border)] bg-[var(--secondary)] p-2.5 flex flex-col items-center justify-center h-36 relative">
+                      <span class="wf-hint hidden absolute top-1 left-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">PictureBox picSaved</span>
+                      <span class="text-xs font-semibold text-[var(--muted-foreground)] mb-1">HÌNH ĐÃ LƯU LÚC VÀO</span>
+                      <div class="w-full h-16 rounded bg-[var(--card)] border border-[var(--border)] flex flex-col items-center justify-center">
+                        <span class="text-xs text-[var(--muted-foreground)] font-mono" id="outImgFileName">oto_51G45678.jpg</span>
+                        <span class="font-mono font-bold text-xs mt-0.5" id="outPlatePhoto">51G-456.78</span>
+                      </div>
+                      <span class="text-xs text-[var(--muted-foreground)] mt-1" id="outTimeInLabel">Vào: 29/10 07:15:00</span>
+                    </div>
+
+                    <div class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2.5 text-xs space-y-1.5 flex flex-col justify-center">
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Mã thẻ:</span><strong class="font-mono" id="outCard">THE002</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Biển số vào:</span><strong class="font-mono" id="outPlate">51G-456.78</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Loại / Ô đỗ:</span><strong id="outTypeSlot">Ô tô • Ô B-02</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Thời gian đỗ:</span><strong id="outDuration">3h 05p (Tính 4h)</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Loại vé:</span><span id="outPassBadge" class="font-semibold text-blue-600 dark:text-blue-400">Vé lượt (20k/h)</span></div>
+                    </div>
+                  </div>
+
+                  <!-- Xử lý mất thẻ -->
+                  <div class="p-2.5 rounded-lg bg-[var(--secondary)] border border-[var(--border)] space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-medium">
+                      <input type="checkbox" id="chkLostCard" onchange="recalculateCheckoutFee()" class="rounded" />
+                      <span>Khách mất thẻ (+50.000đ tiền phạt &amp; nhập CCCD biên bản)</span>
+                    </label>
+                    <div id="lostCardFields" class="hidden grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Họ tên người nhận xe..." class="px-2.5 py-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-xs" />
+                      <input type="text" placeholder="Số CCCD đối chiếu..." class="px-2.5 py-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-xs" />
+                    </div>
+                  </div>
+
+                  <!-- Tổng tiền thanh toán -->
+                  <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                      <div class="text-xs font-semibold">TỔNG TIỀN THU</div>
+                      <div class="text-xs text-[var(--muted-foreground)]" id="outFeeBreakdown">Tiền gửi: 80.000đ + Phạt: 0đ</div>
+                    </div>
+                    <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono" id="outTotalAmount">
+                      80.000 VNĐ
+                    </div>
+                  </div>
+
+                  <button onclick="simulateCheckOut()" class="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition">
+                    [F2] Xác Nhận Thu Tiền &amp; Giải Phóng Chỗ Đỗ
+                  </button>
+                  <div id="checkoutToast" class="hidden text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg"></div>
+                </div>
+
+              </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 2: frmParkingMap (Cố định 8 cột Sơ đồ + 4 cột Giá) -->
+            <!-- ========================================================= -->
+            <section id="screen-map" class="hidden space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 class="text-base font-bold">SƠ ĐỒ VỊ TRÍ ĐỖ XE 2D &amp; CẤU HÌNH BẢNG GIÁ (PricingRule)</h2>
+                  <p class="text-xs text-[var(--muted-foreground)]">Thành viên 2 • Click trực tiếp chuột vào từng ô trên sơ đồ để kiểm tra xe hoặc khóa Bảo trì</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-medium">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Trống</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-500 inline-block"></span> Đang đỗ</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-500 inline-block"></span> Bảo trì</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-8 space-y-3">
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5">
+                    <div class="flex items-center justify-between mb-2.5">
+                      <h3 class="text-sm font-bold">Khu A — Xe Máy (12 vị trí)</h3>
+                      <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">FlowLayoutPanel flpZoneA</span>
+                    </div>
+                    <div class="grid grid-cols-6 gap-2" id="gridZoneA"></div>
+                  </div>
+
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5">
+                    <div class="flex items-center justify-between mb-2.5">
+                      <h3 class="text-sm font-bold">Khu B — Ô Tô (8 vị trí)</h3>
+                      <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">FlowLayoutPanel flpZoneB</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2" id="gridZoneB"></div>
+                  </div>
+                </div>
+
+                <div class="col-span-4 space-y-3">
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-2.5">
+                    <h3 class="text-sm font-bold border-b border-[var(--border)] pb-1.5">Thông tin Ô đỗ đang chọn</h3>
+                    <div class="text-xs space-y-2">
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Mã vị trí:</span><strong id="detSlotCode" class="font-mono text-sm">A-01</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Trạng thái:</span><strong id="detSlotStatus">Đang có xe (Occupied)</strong></div>
+                      <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Biển số xe:</span><strong id="detSlotPlate" class="font-mono">59X3-112.23</strong></div>
+                      <button onclick="toggleSelectedSlotMaintenance()"
+                        class="w-full mt-1 py-2 px-3 rounded-lg bg-[var(--secondary)] hover:opacity-90 border border-[var(--border)] font-semibold text-xs">
+                        Đổi trạng thái Bảo trì / Mở trống
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-2">
+                    <h3 class="text-sm font-bold border-b border-[var(--border)] pb-1.5">Cấu hình Bảng giá (PricingRule)</h3>
+                    <div class="space-y-1.5 text-xs">
+                      <div class="p-2 rounded bg-[var(--secondary)] flex justify-between"><span>Xe máy (Ngày / Đêm)</span><strong class="font-mono">5.000 / 10.000đ</strong></div>
+                      <div class="p-2 rounded bg-[var(--secondary)] flex justify-between"><span>Ô tô (Mỗi giờ)</span><strong class="font-mono">20.000đ / giờ</strong></div>
+                      <div class="p-2 rounded bg-[var(--secondary)] flex justify-between"><span>Vé tháng (XM / Ô tô)</span><strong class="font-mono">150k / 1.200k</strong></div>
+                      <div class="p-2 rounded bg-[var(--secondary)] flex justify-between"><span>Phạt mất thẻ</span><strong class="font-mono text-rose-500">50.000đ</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 3.1: ĐĂNG KÝ VÉ THÁNG MỚI (5 cột Form + 7 cột Bảng)-->
+            <!-- ========================================================= -->
+            <section id="screen-monthly-register" class="hidden space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 class="text-base font-bold">3.1 ĐĂNG KÝ VÉ THÁNG MỚI (CHỈ DÀNH CHO TẠO MỚI)</h2>
+                  <p class="text-xs text-[var(--muted-foreground)]">Thành viên 2 • Tách riêng nghiệp vụ Đăng ký mới (không trộn nút Gia hạn ở màn hình này)</p>
+                </div>
+                <button onclick="switchScreen('monthly-renew')" class="text-xs px-3 py-1.5 rounded-lg bg-[var(--secondary)] border border-[var(--border)] font-semibold">
+                  Mở nhánh 3.2 Gia hạn &amp; Cập nhật →
+                </button>
+              </div>
+
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-2.5">
+                  <h3 class="text-sm font-bold text-blue-600 dark:text-blue-400 border-b border-[var(--border)] pb-1.5">Nhập Hồ sơ Đăng ký Mới</h3>
+                  <div class="space-y-2 text-xs">
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Họ tên chủ xe (*)</label>
+                      <input type="text" id="regName" placeholder="Nhập họ tên khách hàng..." class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Số điện thoại (*)</label>
+                        <input type="text" id="regPhone" placeholder="09xxxxxxxx" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono" />
+                      </div>
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Số CCCD (*)</label>
+                        <input type="text" id="regCCCD" placeholder="079xxxxxxxxx" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono" />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Biển số xe (*)</label>
+                        <input type="text" id="regPlate" placeholder="59K1-234.56" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono font-bold" />
+                      </div>
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Loại xe (*)</label>
+                        <select id="regType" onchange="calcRegisterFee()" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                          <option value="XEMAY">Xe máy (150k/tháng)</option>
+                          <option value="OTO">Ô tô (1.200k/tháng)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Hãng xe &amp; Màu sơn</label>
+                      <input type="text" id="regBrand" placeholder="VD: Honda AirBlade - Đen" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Ngày bắt đầu</label>
+                        <input type="text" value="29/10/2026" readonly class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--secondary)] border border-[var(--border)]" />
+                      </div>
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Gói đăng ký ban đầu</label>
+                        <select id="regMonths" onchange="calcRegisterFee()" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                          <option value="1">1 tháng (→ 29/11/2026)</option>
+                          <option value="3">3 tháng (→ 29/01/2027)</option>
+                          <option value="6">6 tháng (→ 29/04/2027)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-between">
+                      <span>Phí đăng ký mới:</span>
+                      <strong id="regFeeTotal" class="text-sm font-extrabold text-blue-600 dark:text-blue-400 font-mono">150.000 VNĐ</strong>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-2 pt-1">
+                    <button onclick="simulateNewPassRegister()" class="flex-1 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs">
+                      Đăng Ký Vé Tháng Mới
+                    </button>
+                    <button onclick="clearRegisterForm()" class="py-2 px-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)] font-medium text-xs">
+                      Làm mới
+                    </button>
+                  </div>
+                  <div id="regToast" class="hidden text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg"></div>
+                </div>
+
+                <div class="col-span-7 bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold">Danh sách Vé tháng hiện có (DataGridView)</h3>
+                    <span class="wf-hint hidden text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono">DataGridView dgvMonthlyPasses</span>
+                  </div>
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--secondary)]">
+                        <th class="p-2">Mã Vé</th>
+                        <th class="p-2">Biển số</th>
+                        <th class="p-2">Chủ xe / SĐT</th>
+                        <th class="p-2">Phương tiện</th>
+                        <th class="p-2">Thời hạn</th>
+                        <th class="p-2">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyMonthlyList" class="divide-y divide-[var(--border)]"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 3.2: GIA HẠN & CẬP NHẬT VÉ THÁNG (7 cột + 5 cột)   -->
+            <!-- ========================================================= -->
+            <section id="screen-monthly-renew" class="hidden space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 class="text-base font-bold">3.2 GIA HẠN &amp; CẬP NHẬT VÉ THÁNG</h2>
+                  <p class="text-xs text-[var(--muted-foreground)]">Thành viên 2 • Chọn 1 vé tháng trong bảng bên trái để Gia hạn thêm tháng, Cập nhật xe hoặc Hủy vé</p>
+                </div>
+                <button onclick="switchScreen('monthly-register')" class="text-xs px-3 py-1.5 rounded-lg bg-[var(--secondary)] border border-[var(--border)] font-semibold">
+                  ← Về nhánh 3.1 Đăng ký mới
+                </button>
+              </div>
+
+              <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-7 bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold">Bảng tra cứu &amp; chọn Vé tháng cần cập nhật</h3>
+                    <span class="text-xs text-[var(--muted-foreground)]">Click chọn 1 dòng</span>
+                  </div>
+                  <div class="flex gap-2 text-xs">
+                    <input type="text" id="txtSearchPass" oninput="renderRenewTable()" placeholder="Gõ biển số hoặc tên khách hàng..."
+                      class="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]" />
+                    <select id="cboFilterPassStatus" onchange="renderRenewTable()" class="px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                      <option value="ALL">Tất cả vé</option>
+                      <option value="EXPIRING">Sắp / Đã hết hạn</option>
+                      <option value="ACTIVE">Đang còn hạn</option>
+                    </select>
+                  </div>
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--secondary)]">
+                        <th class="p-2">Mã Vé</th>
+                        <th class="p-2">Biển số</th>
+                        <th class="p-2">Chủ xe</th>
+                        <th class="p-2">Hạn hiện tại</th>
+                        <th class="p-2">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyRenewSelect" class="divide-y divide-[var(--border)]"></tbody>
+                  </table>
+                </div>
+
+                <div class="col-span-5 space-y-3">
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-2.5 text-xs">
+                    <h3 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 border-b border-[var(--border)] pb-1.5">Gia hạn Vé tháng đang chọn</h3>
+                    <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Mã vé &amp; Biển số:</span><strong id="renPassCode" class="font-mono">MP-01 (51H-999.99)</strong></div>
+                    <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Chủ xe:</span><strong id="renOwner">Trần Minh Hoàng</strong></div>
+                    <div class="flex justify-between"><span class="text-[var(--muted-foreground)]">Ngày hết hạn cũ:</span><strong id="renOldEnd" class="text-amber-600 dark:text-amber-400">01/11/2026</strong></div>
+
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Số tháng muốn gia hạn thêm:</label>
+                      <select id="cboRenewMonths" onchange="updateRenewPreview()" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                        <option value="1">Gia hạn thêm +1 tháng</option>
+                        <option value="3">Gia hạn thêm +3 tháng</option>
+                        <option value="6">Gia hạn thêm +6 tháng</option>
+                      </select>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+                      <div class="flex justify-between"><span>Ngày hết hạn mới:</span><strong id="renNewEnd" class="font-mono text-emerald-600 dark:text-emerald-400">01/12/2026</strong></div>
+                      <div class="flex justify-between"><span>Số tiền thu gia hạn:</span><strong id="renFee" class="font-mono text-sm text-emerald-600 dark:text-emerald-400">1.200.000 VNĐ</strong></div>
+                    </div>
+
+                    <button onclick="simulateRenewSubmit()" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                      Xác Nhận Gia Hạn &amp; Thu Phí
+                    </button>
+                  </div>
+
+                  <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-2 text-xs">
+                    <h3 class="text-sm font-bold border-b border-[var(--border)] pb-1.5">Cập nhật thông tin / Hủy vé</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">SĐT liên hệ</label>
+                        <input type="text" id="updPhone" value="0908123456" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono" />
+                      </div>
+                      <div>
+                        <label class="block text-[var(--muted-foreground)] mb-1">Mô tả xe</label>
+                        <input type="text" id="updBrand" value="Mazda CX-5 Trắng" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]" />
+                      </div>
+                    </div>
+                    <div class="flex gap-2 pt-1">
+                      <button onclick="simulateUpdatePassInfo()" class="flex-1 py-1.5 px-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)] font-semibold">
+                        Lưu thay đổi
+                      </button>
+                      <button onclick="simulateCancelPass()" class="py-1.5 px-3 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-semibold">
+                        Hủy vé
+                      </button>
+                    </div>
+                    <div id="renewToast" class="hidden text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 4: frmSearchReport (Cố định 4 cột KPI ngang)       -->
+            <!-- ========================================================= -->
+            <section id="screen-report" class="hidden space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                <div>
+                  <h2 class="text-base font-bold">TRA CỨU LỊCH SỬ XE RA/VÀO &amp; BÁO CÁO DOANH THU</h2>
+                  <p class="text-xs text-[var(--muted-foreground)]">Thành viên 3 • Màn hình tổng hợp số liệu, tra cứu mất thẻ theo biển số &amp; kết xuất doanh thu</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-3">
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3">
+                  <div class="text-xs text-[var(--muted-foreground)]">Xe đang gửi trong bãi</div>
+                  <div class="text-lg font-extrabold mt-0.5">7 / 20 xe</div>
+                  <div class="text-xs text-blue-600 dark:text-blue-400">4 Xe máy • 3 Ô tô</div>
+                </div>
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3">
+                  <div class="text-xs text-[var(--muted-foreground)]">Doanh thu Vé lượt (Ca Sáng)</div>
+                  <div class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">685.000 đ</div>
+                  <div class="text-xs text-[var(--muted-foreground)]">42 lượt xe ra</div>
+                </div>
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3">
+                  <div class="text-xs text-[var(--muted-foreground)]">Doanh thu Vé tháng hôm nay</div>
+                  <div class="text-lg font-extrabold mt-0.5">2.550.000 đ</div>
+                  <div class="text-xs text-[var(--muted-foreground)]">Đăng ký &amp; Gia hạn</div>
+                </div>
+                <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3">
+                  <div class="text-xs text-[var(--muted-foreground)]">Sự cố mất thẻ hôm nay</div>
+                  <div class="text-lg font-extrabold text-rose-500 mt-0.5">1 biên bản</div>
+                  <div class="text-xs text-[var(--muted-foreground)]">Thu phạt: 50.000 đ</div>
+                </div>
+              </div>
+
+              <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 flex items-end gap-3 text-xs">
+                <div class="flex-1">
+                  <label class="block text-[var(--muted-foreground)] mb-1">Tìm theo Biển số xe / Mã thẻ</label>
+                  <input type="text" placeholder="Nhập biển số xe cần đối chiếu (VD: 59X3, 51G...)" class="w-full px-3 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]" />
+                </div>
+                <div>
+                  <label class="block text-[var(--muted-foreground)] mb-1">Ca trực</label>
+                  <select class="px-3 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                    <option>Tất cả ca trực</option>
+                    <option>Ca Sáng (06:00 - 14:00)</option>
+                    <option>Ca Chiều (14:00 - 22:00)</option>
+                    <option>Ca Đêm (22:00 - 06:00)</option>
+                  </select>
+                </div>
+                <button class="py-1.5 px-4 rounded-lg bg-blue-600 text-white font-semibold">Tìm kiếm</button>
+                <button class="py-1.5 px-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)] font-medium">Xuất Excel (.csv)</button>
+              </div>
+
+              <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--secondary)]">
+                      <th class="p-2">Mã Thẻ</th>
+                      <th class="p-2">Biển số</th>
+                      <th class="p-2">Loại xe / Ô</th>
+                      <th class="p-2">Giờ vào</th>
+                      <th class="p-2">Giờ ra</th>
+                      <th class="p-2">Ghi chú / Hình thức</th>
+                      <th class="p-2">Tổng tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-[var(--border)]">
+                    <tr>
+                      <td class="p-2 font-mono">THE002</td>
+                      <td class="p-2 font-mono font-bold">51G-456.78</td>
+                      <td class="p-2">Ô tô (B-02)</td>
+                      <td class="p-2">29/10 07:15</td>
+                      <td class="p-2 text-blue-500 font-medium">Đang gửi</td>
+                      <td class="p-2">Vé lượt</td>
+                      <td class="p-2 font-mono">—</td>
+                    </tr>
+                    <tr>
+                      <td class="p-2 font-mono">THE004</td>
+                      <td class="p-2 font-mono font-bold">59C1-778.12</td>
+                      <td class="p-2">Xe máy (A-03)</td>
+                      <td class="p-2">29/10 06:40</td>
+                      <td class="p-2">29/10 09:10</td>
+                      <td class="p-2 text-rose-500 font-semibold">Mất thẻ (CCCD: 079204...)</td>
+                      <td class="p-2 font-mono font-bold">55.000 đ</td>
+                    </tr>
+                    <tr>
+                      <td class="p-2 font-mono">THE003</td>
+                      <td class="p-2 font-mono font-bold">51H-999.99</td>
+                      <td class="p-2">Ô tô (B-01)</td>
+                      <td class="p-2">29/10 07:00</td>
+                      <td class="p-2">29/10 08:30</td>
+                      <td class="p-2 text-emerald-600 dark:text-emerald-400 font-semibold">Vé tháng hợp lệ</td>
+                      <td class="p-2 font-mono font-bold">0 đ</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- SCREEN 5: frmLogin (Desktop Dialog Window)                -->
+            <!-- ========================================================= -->
+            <section id="screen-login" class="hidden h-full flex items-center justify-center">
+              <div class="w-[420px] bg-[var(--card)] border-2 border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-[var(--sidebar)] border-b border-[var(--border)] px-3 py-1.5 flex items-center justify-between text-xs">
+                  <span class="font-semibold">frmLogin — Đăng nhập Hệ thống</span>
+                  <span class="text-red-500 font-bold">&#10005;</span>
+                </div>
+                <div class="p-6 space-y-4">
+                  <div class="text-center space-y-1">
+                    <div class="w-11 h-11 rounded-xl bg-blue-600 text-white mx-auto flex items-center justify-center font-extrabold text-lg">P</div>
+                    <h2 class="text-sm font-bold pt-1">QUẢN LÝ BÃI ĐỖ XE THÔNG MINH</h2>
+                    <p class="text-xs text-[var(--muted-foreground)]">Ứng dụng Desktop dành cho Quản lý / Trực ca</p>
+                  </div>
+                  <div class="space-y-2.5 text-xs">
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Tài khoản (Username)</label>
+                      <input type="text" value="admin" class="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-sm" />
+                    </div>
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Mật khẩu (Password)</label>
+                      <input type="password" value="123456" class="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-sm" />
+                    </div>
+                    <div>
+                      <label class="block text-[var(--muted-foreground)] mb-1">Ca trực làm việc</label>
+                      <select class="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-sm">
+                        <option>Ca Sáng (06:00 - 14:00)</option>
+                        <option>Ca Chiều (14:00 - 22:00)</option>
+                        <option>Ca Đêm (22:00 - 06:00)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button onclick="switchScreen('checkinout')" class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs">
+                    Đăng Nhập Vào Hệ Thống
+                  </button>
+                </div>
+              </div>
+            </section>
+
+          </main>
+        </div>
+
+        <!-- WinForms StatusStrip -->
+        <footer class="bg-[var(--sidebar)] border-t border-[var(--border)] px-4 py-1.5 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+          <div class="flex items-center gap-4">
+            <span>Database: <strong class="text-[var(--foreground)]">SQLite (DAL/Database/baidoxe.db)</strong></span>
+            <span>Độ phân giải chuẩn: <strong class="text-[var(--foreground)]">Desktop PC (1280×760)</strong></span>
+          </div>
+          <div>Nhập liệu thủ công &amp; chọn file hình ảnh từ máy tính</div>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let fitModeEnabled = true;
+
+    function applyDesktopScale() {
+      const viewport = document.getElementById('desktopViewport');
+      const wrapper = document.getElementById('desktopWindowWrapper');
+      const win = document.getElementById('desktopWindow');
+      if (!fitModeEnabled) {
+        wrapper.style.transform = 'none';
+        wrapper.style.height = 'auto';
+        viewport.style.overflowX = 'auto';
+        return;
+      }
+      const availWidth = viewport.clientWidth;
+      const targetWidth = 1180;
+      if (availWidth < targetWidth && availWidth > 320) {
+        const scale = availWidth / targetWidth;
+        wrapper.style.transform = 'scale(' + scale + ')';
+        wrapper.style.height = Math.ceil(win.offsetHeight * scale) + 'px';
+        viewport.style.overflowX = 'hidden';
+      } else {
+        wrapper.style.transform = 'none';
+        wrapper.style.height = 'auto';
+        viewport.style.overflowX = 'auto';
+      }
+    }
+
+    function toggleFitMode() {
+      fitModeEnabled = !fitModeEnabled;
+      document.getElementById('btnFitMode').textContent = 'Thu vừa khung xem: ' + (fitModeEnabled ? 'BẬT' : 'TẮT (100% PC)');
+      applyDesktopScale();
+    }
+
+    window.addEventListener('resize', applyDesktopScale);
+
+    // Demo Data
+    const slotsA = [
+      { code: 'A-01', status: 'Occupied', plate: '59X3-112.23' },
+      { code: 'A-02', status: 'Occupied', plate: '59P2-345.67' },
+      { code: 'A-03', status: 'Available', plate: null },
+      { code: 'A-04', status: 'Occupied', plate: '59D1-908.11' },
+      { code: 'A-05', status: 'Available', plate: null },
+      { code: 'A-06', status: 'Available', plate: null },
+      { code: 'A-07', status: 'Maintenance', plate: null },
+      { code: 'A-08', status: 'Available', plate: null },
+      { code: 'A-09', status: 'Occupied', plate: '59G2-331.09' },
+      { code: 'A-10', status: 'Available', plate: null },
+      { code: 'A-11', status: 'Available', plate: null },
+      { code: 'A-12', status: 'Available', plate: null }
+    ];
+
+    const slotsB = [
+      { code: 'B-01', status: 'Occupied', plate: '51H-999.99' },
+      { code: 'B-02', status: 'Occupied', plate: '51G-456.78' },
+      { code: 'B-03', status: 'Available', plate: null },
+      { code: 'B-04', status: 'Available', plate: null },
+      { code: 'B-05', status: 'Occupied', plate: '51K-128.88' },
+      { code: 'B-06', status: 'Available', plate: null },
+      { code: 'B-07', status: 'Maintenance', plate: null },
+      { code: 'B-08', status: 'Available', plate: null }
+    ];
+
+    const monthlyPasses = [
+      { code: 'MP-01', plate: '51H-999.99', owner: 'Trần Minh Hoàng', phone: '0908123456', type: 'OTO', typeName: 'Ô tô', brand: 'Mazda CX-5 Trắng', start: '01/10/2026', end: '01/11/2026', status: 'EXPIRING', statusText: 'Sắp hết hạn (3 ngày)' },
+      { code: 'MP-02', plate: '59P2-345.67', owner: 'Nguyễn Thị Lan', phone: '0912345678', type: 'XEMAY', typeName: 'Xe máy', brand: 'Honda Vision Đỏ', start: '15/10/2026', end: '15/12/2026', status: 'ACTIVE', statusText: 'Còn hạn' },
+      { code: 'MP-03', plate: '59T1-882.10', owner: 'Lê Quốc Bảo', phone: '0987654321', type: 'XEMAY', typeName: 'Xe máy', brand: 'AirBlade Đen', start: '01/09/2026', end: '01/10/2026', status: 'EXPIRED', statusText: 'Đã hết hạn' }
+    ];
+
+    let selectedSlot = slotsA[0];
+    let selectedPass = monthlyPasses[0];
+    let currentCheckoutBaseFee = 80000;
+
+    function switchScreen(screenId) {
+      const screens = ['checkinout', 'map', 'monthly-register', 'monthly-renew', 'report', 'login'];
+      screens.forEach(id => {
+        document.getElementById('screen-' + id).classList.add('hidden');
+        const btn = document.getElementById('nav-' + id);
+        if (id.startsWith('monthly-')) {
+          btn.className = 'nav-btn w-full text-left pl-3.5 pr-2.5 py-1.5 rounded-md text-xs font-medium transition flex flex-col hover:bg-[var(--secondary)] text-[var(--foreground)]';
+        } else {
+          btn.className = 'nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 hover:bg-[var(--secondary)] text-[var(--foreground)]';
+        }
+      });
+
+      document.getElementById('screen-' + screenId).classList.remove('hidden');
+      const activeBtn = document.getElementById('nav-' + screenId);
+      if (screenId.startsWith('monthly-')) {
+        activeBtn.className = 'nav-btn w-full text-left pl-3.5 pr-2.5 py-1.5 rounded-md text-xs font-semibold transition flex flex-col bg-[var(--primary)] text-[var(--primary-foreground)]';
+      } else {
+        activeBtn.className = 'nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition flex flex-col gap-0.5 bg-[var(--primary)] text-[var(--primary-foreground)]';
+      }
+      setTimeout(applyDesktopScale, 20);
+    }
+
+    function toggleWinFormsHints(show) {
+      document.querySelectorAll('.wf-hint').forEach(el => {
+        if (show) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+      setTimeout(applyDesktopScale, 20);
+    }
+
+    function handleManualImagePick(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      document.getElementById('txtImagePathIn').value = 'C:\\Images\\' + file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.getElementById('uploadedImgIn');
+        img.src = e.target.result;
+        img.classList.remove('hidden');
+        document.getElementById('emptyImgPlaceholderIn').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetCheckInForm() {
+      document.getElementById('txtPlateIn').value = '';
+      document.getElementById('txtImagePathIn').value = '';
+      document.getElementById('filePickerIn').value = '';
+      document.getElementById('uploadedImgIn').classList.add('hidden');
+      document.getElementById('emptyImgPlaceholderIn').classList.remove('hidden');
+      document.getElementById('lblPassStatusIn').textContent = 'Chưa nhập biển số';
+      document.getElementById('lblPassStatusIn').className = '';
+      document.getElementById('checkinToast').classList.add('hidden');
+    }
+
+    function handlePlateInChange(val) {
+      const clean = val.trim().toUpperCase();
+      const lbl = document.getElementById('lblPassStatusIn');
+      if (!clean) {
+        lbl.textContent = 'Chưa nhập biển số';
+        lbl.className = '';
+        return;
+      }
+      const foundPass = monthlyPasses.find(p => p.plate.toUpperCase() === clean && p.status !== 'EXPIRED' && p.status !== 'CANCELLED');
+      if (foundPass) {
+        lbl.textContent = '★ Vé Tháng Hợp Lệ (' + foundPass.owner + ')';
+        lbl.className = 'text-emerald-600 dark:text-emerald-400 font-bold';
+      } else {
+        lbl.textContent = 'Khách gửi Vé lượt';
+        lbl.className = '';
+      }
+    }
+
+    function updateSuggestedSlot() {
+      const type = document.getElementById('cboVehicleTypeIn').value;
+      const list = type === 'XEMAY' ? slotsA : slotsB;
+      const free = list.find(s => s.status === 'Available');
+      document.getElementById('txtSuggestedSlot').value = free ? (free.code + ' (Trống)') : 'HẾT CHỖ!';
+    }
+
+    function simulateCheckIn() {
+      const plate = document.getElementById('txtPlateIn').value.trim().toUpperCase();
+      const toast = document.getElementById('checkinToast');
+      toast.classList.remove('hidden');
+
+      if (!plate) {
+        toast.className = 'text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg';
+        toast.textContent = '⚠ Vui lòng nhập Biển số xe thủ công!';
+        return;
+      }
+
+      const type = document.getElementById('cboVehicleTypeIn').value;
+      const list = type === 'XEMAY' ? slotsA : slotsB;
+      const free = list.find(s => s.status === 'Available');
+      if (!free) {
+        toast.className = 'text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg';
+        toast.textContent = '⚠ Khu vực này đã hết chỗ trống!';
+        return;
+      }
+      free.status = 'Occupied';
+      free.plate = plate;
+      renderSlots();
+      updateSuggestedSlot();
+      toast.className = 'text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg';
+      toast.textContent = '✔ Đã lưu xe ' + plate + ' vào ô ' + free.code + '!';
+    }
+
+    function loadCheckoutSample(key) {
+      document.getElementById('chkLostCard').checked = false;
+      document.getElementById('lostCardFields').classList.add('hidden');
+      if (key === 'OTO_TURN') {
+        document.getElementById('outCard').textContent = 'THE002';
+        document.getElementById('outPlate').textContent = '51G-456.78';
+        document.getElementById('outPlatePhoto').textContent = '51G-456.78';
+        document.getElementById('outImgFileName').textContent = 'oto_51G45678.jpg';
+        document.getElementById('outTypeSlot').textContent = 'Ô tô • Ô B-02';
+        document.getElementById('outDuration').textContent = '3h 05p (Tính 4h)';
+        document.getElementById('outPassBadge').textContent = 'Vé lượt (20k/h)';
+        currentCheckoutBaseFee = 80000;
+      } else if (key === 'XM_TURN') {
+        document.getElementById('outCard').textContent = 'THE001';
+        document.getElementById('outPlate').textContent = '59X3-112.23';
+        document.getElementById('outPlatePhoto').textContent = '59X3-112.23';
+        document.getElementById('outImgFileName').textContent = 'xemay_59X3.jpg';
+        document.getElementById('outTypeSlot').textContent = 'Xe máy • Ô A-01';
+        document.getElementById('outDuration').textContent = '2h 15p';
+        document.getElementById('outPassBadge').textContent = 'Vé lượt ngày (5k)';
+        currentCheckoutBaseFee = 5000;
+      } else {
+        document.getElementById('outCard').textContent = 'THE003';
+        document.getElementById('outPlate').textContent = '51H-999.99';
+        document.getElementById('outPlatePhoto').textContent = '51H-999.99';
+        document.getElementById('outImgFileName').textContent = 'oto_51H99999.jpg';
+        document.getElementById('outTypeSlot').textContent = 'Ô tô • Ô B-01';
+        document.getElementById('outDuration').textContent = '1h 40p';
+        document.getElementById('outPassBadge').textContent = '★ Vé tháng (0đ)';
+        currentCheckoutBaseFee = 0;
+      }
+      recalculateCheckoutFee();
+    }
+
+    function recalculateCheckoutFee() {
+      const lost = document.getElementById('chkLostCard').checked;
+      const fields = document.getElementById('lostCardFields');
+      if (lost) fields.classList.remove('hidden');
+      else fields.classList.add('hidden');
+      const penalty = lost ? 50000 : 0;
+      const total = currentCheckoutBaseFee + penalty;
+      document.getElementById('outFeeBreakdown').textContent =
+        'Tiền gửi: ' + currentCheckoutBaseFee.toLocaleString('vi-VN') + 'đ + Phạt: ' + penalty.toLocaleString('vi-VN') + 'đ';
+      document.getElementById('outTotalAmount').textContent = total.toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    function simulateCheckOut() {
+      const plate = document.getElementById('outPlate').textContent;
+      const total = document.getElementById('outTotalAmount').textContent;
+      const toast = document.getElementById('checkoutToast');
+      toast.classList.remove('hidden');
+      toast.textContent = '✔ Đã thu ' + total + ' và giải phóng ô đỗ của xe ' + plate + '!';
+    }
+
+    function calcRegisterFee() {
+      const type = document.getElementById('regType').value;
+      const months = parseInt(document.getElementById('regMonths').value, 10);
+      const unit = type === 'OTO' ? 1200000 : 150000;
+      document.getElementById('regFeeTotal').textContent = (unit * months).toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    function clearRegisterForm() {
+      document.getElementById('regName').value = '';
+      document.getElementById('regPhone').value = '';
+      document.getElementById('regCCCD').value = '';
+      document.getElementById('regPlate').value = '';
+      document.getElementById('regBrand').value = '';
+      document.getElementById('regToast').classList.add('hidden');
+    }
+
+    function simulateNewPassRegister() {
+      const name = document.getElementById('regName').value.trim() || 'Khách hàng mới';
+      const phone = document.getElementById('regPhone').value.trim() || '0909000111';
+      const plate = (document.getElementById('regPlate').value.trim() || '59K1-555.66').toUpperCase();
+      const type = document.getElementById('regType').value;
+      const brand = document.getElementById('regBrand').value.trim() || (type === 'OTO' ? 'Ô tô cá nhân' : 'Xe máy cá nhân');
+
+      const newCode = 'MP-0' + (monthlyPasses.length + 1);
+      monthlyPasses.unshift({
+        code: newCode,
+        plate: plate,
+        owner: name,
+        phone: phone,
+        type: type,
+        typeName: type === 'OTO' ? 'Ô tô' : 'Xe máy',
+        brand: brand,
+        start: '29/10/2026',
+        end: '29/11/2026',
+        status: 'ACTIVE',
+        statusText: 'Còn hạn'
+      });
+
+      renderMonthlyRegisterTable();
+      renderRenewTable();
+      const toast = document.getElementById('regToast');
+      toast.classList.remove('hidden');
+      toast.textContent = '✔ Đã đăng ký Vé tháng mới ' + newCode + ' cho xe ' + plate + '!';
+    }
+
+    function badgeForStatus(p) {
+      if (p.status === 'ACTIVE') return '<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">' + p.statusText + '</span>';
+      if (p.status === 'EXPIRING') return '<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold">' + p.statusText + '</span>';
+      return '<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold">' + p.statusText + '</span>';
+    }
+
+    function renderMonthlyRegisterTable() {
+      const tbody = document.getElementById('tbodyMonthlyList');
+      tbody.innerHTML = '';
+      monthlyPasses.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2 font-mono">${p.code}</td>
+          <td class="p-2 font-mono font-bold">${p.plate}</td>
+          <td class="p-2">${p.owner}<div class="text-[var(--muted-foreground)] font-mono">${p.phone}</div></td>
+          <td class="p-2">${p.typeName} • ${p.brand}</td>
+          <td class="p-2 font-mono">${p.start} → ${p.end}</td>
+          <td class="p-2">${badgeForStatus(p)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderRenewTable() {
+      const keyword = (document.getElementById('txtSearchPass').value || '').trim().toLowerCase();
+      const filter = document.getElementById('cboFilterPassStatus').value;
+      const tbody = document.getElementById('tbodyRenewSelect');
+      tbody.innerHTML = '';
+
+      monthlyPasses.forEach(p => {
+        if (keyword && !p.plate.toLowerCase().includes(keyword) && !p.owner.toLowerCase().includes(keyword)) return;
+        if (filter === 'EXPIRING' && p.status === 'ACTIVE') return;
+        if (filter === 'ACTIVE' && p.status !== 'ACTIVE') return;
+
+        const isSel = selectedPass && selectedPass.code === p.code ? 'bg-blue-500/10' : '';
+        const tr = document.createElement('tr');
+        tr.className = 'cursor-pointer hover:bg-[var(--secondary)] transition ' + isSel;
+        tr.innerHTML = `
+          <td class="p-2 font-mono">${p.code}</td>
+          <td class="p-2 font-mono font-bold">${p.plate}</td>
+          <td class="p-2">${p.owner}</td>
+          <td class="p-2 font-mono">${p.end}</td>
+          <td class="p-2">${badgeForStatus(p)}</td>
+        `;
+        tr.onclick = () => selectPassForRenew(p);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function selectPassForRenew(p) {
+      selectedPass = p;
+      document.getElementById('renPassCode').textContent = p.code + ' (' + p.plate + ')';
+      document.getElementById('renOwner').textContent = p.owner;
+      document.getElementById('renOldEnd').textContent = p.end;
+      document.getElementById('updPhone').value = p.phone;
+      document.getElementById('updBrand').value = p.brand;
+      document.getElementById('renewToast').classList.add('hidden');
+      updateRenewPreview();
+      renderRenewTable();
+    }
+
+    function updateRenewPreview() {
+      if (!selectedPass) return;
+      const months = parseInt(document.getElementById('cboRenewMonths').value, 10);
+      const unit = selectedPass.type === 'OTO' ? 1200000 : 150000;
+      document.getElementById('renFee').textContent = (unit * months).toLocaleString('vi-VN') + ' VNĐ';
+
+      const parts = selectedPass.end.split('/');
+      const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1 + months, parseInt(parts[0], 10));
+      const newDateStr = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+      document.getElementById('renNewEnd').textContent = newDateStr;
+    }
+
+    function simulateRenewSubmit() {
+      if (!selectedPass) return;
+      selectedPass.end = document.getElementById('renNewEnd').textContent;
+      selectedPass.status = 'ACTIVE';
+      selectedPass.statusText = 'Còn hạn (Đã gia hạn)';
+      selectPassForRenew(selectedPass);
+      renderMonthlyRegisterTable();
+      const toast = document.getElementById('renewToast');
+      toast.classList.remove('hidden');
+      toast.textContent = '✔ Đã gia hạn vé ' + selectedPass.code + ' đến ' + selectedPass.end + '!';
+    }
+
+    function simulateUpdatePassInfo() {
+      if (!selectedPass) return;
+      selectedPass.phone = document.getElementById('updPhone').value;
+      selectedPass.brand = document.getElementById('updBrand').value;
+      renderMonthlyRegisterTable();
+      renderRenewTable();
+      const toast = document.getElementById('renewToast');
+      toast.classList.remove('hidden');
+      toast.textContent = '✔ Đã cập nhật thông tin vé ' + selectedPass.code + '!';
+    }
+
+    function simulateCancelPass() {
+      if (!selectedPass) return;
+      selectedPass.status = 'CANCELLED';
+      selectedPass.statusText = 'Đã hủy vé';
+      renderMonthlyRegisterTable();
+      renderRenewTable();
+      const toast = document.getElementById('renewToast');
+      toast.classList.remove('hidden');
+      toast.textContent = '✔ Đã hủy vé tháng ' + selectedPass.code + '!';
+    }
+
+    function renderSlots() {
+      const renderGroup = (arr, containerId) => {
+        const el = document.getElementById(containerId);
+        el.innerHTML = '';
+        arr.forEach(slot => {
+          let colorCls = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300';
+          let label = 'Trống';
+          if (slot.status === 'Occupied') {
+            colorCls = 'bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300';
+            label = slot.plate;
+          } else if (slot.status === 'Maintenance') {
+            colorCls = 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300';
+            label = 'Bảo trì';
+          }
+          const isSelected = selectedSlot && selectedSlot.code === slot.code ? 'ring-2 ring-blue-500' : '';
+          const btn = document.createElement('button');
+          btn.className = `p-2 rounded-lg border text-left transition hover:opacity-90 ${colorCls} ${isSelected}`;
+          btn.innerHTML = `<div class="font-bold text-xs">${slot.code}</div><div class="text-xs font-mono truncate mt-0.5">${label}</div>`;
+          btn.onclick = () => selectSlot(slot);
+          el.appendChild(btn);
+        });
+      };
+      renderGroup(slotsA, 'gridZoneA');
+      renderGroup(slotsB, 'gridZoneB');
+
+      const freeCount = [...slotsA, ...slotsB].filter(s => s.status === 'Available').length;
+      document.getElementById('sidebarFreeCount').textContent = freeCount + ' / 20 ô';
+    }
+
+    function selectSlot(slot) {
+      selectedSlot = slot;
+      document.getElementById('detSlotCode').textContent = slot.code;
+      document.getElementById('detSlotStatus').textContent =
+        slot.status === 'Occupied' ? 'Đang có xe (Occupied)' :
+        slot.status === 'Maintenance' ? 'Đang bảo trì (Maintenance)' : 'Đang trống (Available)';
+      document.getElementById('detSlotPlate').textContent = slot.plate || '—';
+      renderSlots();
+    }
+
+    function toggleSelectedSlotMaintenance() {
+      if (!selectedSlot) return;
+      if (selectedSlot.status === 'Occupied') {
+        alert('Ô này đang có xe đỗ, không thể chuyển sang Bảo trì!');
+        return;
+      }
+      selectedSlot.status = selectedSlot.status === 'Maintenance' ? 'Available' : 'Maintenance';
+      selectSlot(selectedSlot);
+    }
+
+    renderSlots();
+    updateSuggestedSlot();
+    renderMonthlyRegisterTable();
+    selectPassForRenew(monthlyPasses[0]);
+    setTimeout(applyDesktopScale, 50);
+  </script>
+</body>
+</html>
