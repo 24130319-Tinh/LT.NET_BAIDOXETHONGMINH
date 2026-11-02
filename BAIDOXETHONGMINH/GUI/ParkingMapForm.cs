@@ -96,7 +96,82 @@ public class ParkingMapForm : Form
 
     private void BuildLayout()
     {
-        
+        var groupSlot = new GroupBox
+        {
+            Text = "Thông tin Ô đỗ đang chọn",
+            Dock = DockStyle.Top,
+            Height = 186
+        };
+        groupSlot.Controls.AddRange(new Control[]
+        {
+            _labelSlotCode, _labelSlotStaus, _labelSlotPlate, _btnMaintenance });
+        var pricingPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Padding = new Padding(6),
+        };
+        pricingPanel.Controls.Add(_lblPricing);
+        var groupPricing = new GroupBox
+        {
+            Text = "Cấu hình bảng giá (PricingRule",
+            Dock = DockStyle.Fill,
+        };
+        groupPricing.Controls.Add(pricingPanel);
+        var right = new Panel
+        {
+            Dock = DockStyle.Right,
+            Width = 300,
+            Padding = new Padding(8),
+        };
+        right.Controls.Add(groupPricing);
+        right.Controls.Add(groupSlot);
+
+        var tools = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 42,
+            Padding = new Padding(8, 5, 8, 0)
+        };
+        tools.Controls.Add(MakeButton("Thêm khu", async (_, _) => await AddZoneAsync()));
+        tools.Controls.Add(MakeButton("Thêm ô", async (_, _) => await AddSlotsAsync()));
+        tools.Controls.Add(MakeButton("Sửa bảng giá", async (_, _) => await EditPricingAsync()));
+        tools.Controls.Add(MakeButton("Quản lý thẻ xe", async (_, _) => await ManageCardsAsync()));
+        tools.Controls.Add(MakeButton("Làm mới", async (_, _) => await RenderAsync()));
+    }
+
+    private async Task<object> ManageCardsAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task<object> EditPricingAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task<object> AddSlotsAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task AddZoneAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    private static Button MakeButton(string text, EventHandler onClick)
+
+    {
+        var button = new Button
+        {
+            Text = text,
+            AutoSize = true,
+            Height = 30,
+            Margin = new Padding(3),
+        };
+        button.Click += onClick;
+        return button;
     }
 
     private async Task ToggleMaintenanceAsync()
