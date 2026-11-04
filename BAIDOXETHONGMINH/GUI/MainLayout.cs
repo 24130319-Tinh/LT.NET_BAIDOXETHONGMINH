@@ -3,7 +3,7 @@ namespace BAIDOXETHONGMINH.GUI;
 /// <summary>
 /// MainLayout đóng vai trò khung bố cục chính:
 /// - Bên trái (pnlLeftMenu): Nhúng component MenuForm
-/// - Bên phải (pnlRightContent): Hiển thị Form tương ứng với mục được chọn trên Menu (Mặc định mục 1 là CheckInOutForm)
+/// - Bên phải (pnlRightContent): Hiển thị Form tương ứng với mục được chọn trên Menu
 /// </summary>
 public partial class MainLayout : Form
 {
@@ -32,10 +32,10 @@ public partial class MainLayout : Form
             "CheckInOut"      => new CheckInOutForm(),
             "ParkingMap"      => new ParkingMapForm(),
             "MonthlyRegister" => new MonthlyPassForm(),
+            "MonthlyRenew"    => new MonthlyRenewForm(),
             "Customer"        => new CustomerForm(),
-            "MonthlyRenew"    => CreateEmptyPlaceholderForm("3.2 GIA HẠN & CẬP NHẬT VÉ THÁNG (Đang phát triển)"),
-            "SearchReport"    => CreateEmptyPlaceholderForm("5. TRA CỨU & THỐNG KÊ DOANH THU (Đang phát triển)"),
-            _                 => CreateEmptyPlaceholderForm(menuKey)
+            "SearchReport"    => new SearchReportForm(),
+            _                 => new CheckInOutForm()
         };
 
         OpenRightComponent(targetForm);
@@ -71,20 +71,5 @@ public partial class MainLayout : Form
         containerPanel.Controls.Add(formComponent);
         containerPanel.Tag = formComponent;
         formComponent.Show();
-    }
-
-    private static Form CreateEmptyPlaceholderForm(string title)
-    {
-        var form = new Form { BackColor = Color.White };
-        var lbl = new Label
-        {
-            Text = title,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(100, 116, 139)
-        };
-        form.Controls.Add(lbl);
-        return form;
     }
 }
