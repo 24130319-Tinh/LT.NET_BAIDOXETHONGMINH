@@ -12,7 +12,6 @@
       <Folder Include="Assets\" />
       <Folder Include="DAL\Database\" />
       <Folder Include="DTO\Entities\" />
-      <Folder Include="DTO\Models\" />
     </ItemGroup>
 
 </Project>
