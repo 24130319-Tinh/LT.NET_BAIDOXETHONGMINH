@@ -9,6 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Folder Include="Assets\" />
       <Folder Include="DAL\Database\" />
       <Folder Include="DTO\Entities\" />
