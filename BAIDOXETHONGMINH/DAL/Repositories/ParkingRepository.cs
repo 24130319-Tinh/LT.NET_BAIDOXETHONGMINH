@@ -302,6 +302,116 @@ public class ParkingRepository
         return null;
     }
 
+    /// <summary>
+    /// Lưu lượt xe vào bãi trong 1 Transaction đồng bộ 3 bảng:
+    /// 1. INSERT vào ParkingSessions (Status = 'Parking')
+    /// 2. UPDATE ParkingCards sang Status = 'InUse'
+    /// 3. UPDATE ParkingSlots sang Status = 'Occupied'
+    /// Trả về true nếu cả 3 bước thành công, ngược lại Rollback và trả về false.
+    /// </summary>
+    public bool InsertCheckInSession(ParkingSession session)
+    {
+        using SqliteConnection connection = SqliteDbContext.GetConnection();
+        using SqliteTransaction transaction = connection.BeginTransaction();
+
+        try
+        {
+            // Bước 1: Thêm dòng mới vào bảng ParkingSessions
+            using SqliteCommand insertSessionCmd = connection.CreateCommand();
+            insertSessionCmd.Transaction = transaction;
+            insertSessionCmd.CommandText = @"
+                INSERT INTO ParkingSessions
+                (
+                    CardCode,
+                    LicensePlate,
+                    VehicleTypeId,
+                    SlotCode,
+                    CheckInTime,
+                    CheckOutTime,
+                    CheckInImagePath,
+                    CheckOutImagePath,
+                    CheckInUserId,
+                    CheckOutUserId,
+                    IsMonthlyPass,
+                    ParkingFee,
+                    PenaltyFee,
+                    TotalAmount,
+                    Status
+                )
+                VALUES
+                (
+                    @CardCode,
+                    @LicensePlate,
+                    @VehicleTypeId,
+                    @SlotCode,
+                    @CheckInTime,
+                    NULL,
+                    @CheckInImagePath,
+                    NULL,
+                    @CheckInUserId,
+                    NULL,
+                    @IsMonthlyPass,
+                    0,
+                    0,
+                    0,
+                    'Parking'
+                );";
+
+            insertSessionCmd.Parameters.AddWithValue("@CardCode", session.CardCode);
+            insertSessionCmd.Parameters.AddWithValue("@LicensePlate", session.LicensePlate);
+            insertSessionCmd.Parameters.AddWithValue("@VehicleTypeId", session.VehicleTypeId);
+            insertSessionCmd.Parameters.AddWithValue("@SlotCode", session.SlotCode);
+            insertSessionCmd.Parameters.AddWithValue("@CheckInTime", session.CheckInTime.ToString("yyyy-MM-dd HH:mm:ss"));
+            insertSessionCmd.Parameters.AddWithValue("@CheckInImagePath", (object?)session.CheckInImagePath ?? DBNull.Value);
+            insertSessionCmd.Parameters.AddWithValue("@CheckInUserId", session.CheckInUserId <= 0 ? 1 : session.CheckInUserId);
+            insertSessionCmd.Parameters.AddWithValue("@IsMonthlyPass", session.IsMonthlyPass ? 1 : 0);
+
+            int insertedRows = insertSessionCmd.ExecuteNonQuery();
+
+            // Bước 2: Cập nhật trạng thái thẻ xe sang 'InUse'
+            using SqliteCommand updateCardCmd = connection.CreateCommand();
+            updateCardCmd.Transaction = transaction;
+            updateCardCmd.CommandText = @"
+                UPDATE ParkingCards
+                SET Status = 'InUse',
+                    LicensePlate = @LicensePlate
+                WHERE CardCode = @CardCode
+                  AND Status = 'Available';";
+            updateCardCmd.Parameters.AddWithValue("@LicensePlate", session.LicensePlate);
+            updateCardCmd.Parameters.AddWithValue("@CardCode", session.CardCode);
+
+            int updatedCards = updateCardCmd.ExecuteNonQuery();
+
+            // Bước 3: Cập nhật trạng thái ô đỗ sang 'Occupied'
+            using SqliteCommand updateSlotCmd = connection.CreateCommand();
+            updateSlotCmd.Transaction = transaction;
+            updateSlotCmd.CommandText = @"
+                UPDATE ParkingSlots
+                SET Status = 'Occupied',
+                    CurrentLicensePlate = @LicensePlate
+                WHERE SlotCode = @SlotCode
+                  AND Status = 'Available';";
+            updateSlotCmd.Parameters.AddWithValue("@LicensePlate", session.LicensePlate);
+            updateSlotCmd.Parameters.AddWithValue("@SlotCode", session.SlotCode);
+
+            int updatedSlots = updateSlotCmd.ExecuteNonQuery();
+
+            if (insertedRows == 1 && updatedCards == 1 && updatedSlots == 1)
+            {
+                transaction.Commit();
+                return true;
+            }
+
+            transaction.Rollback();
+            return false;
+        }
+        catch (Exception)
+        {
+            transaction.Rollback();
+            return false;   
+        }
+    }
+
     private static string NormalizePlate(string rawPlate)
     {
         if (string.IsNullOrWhiteSpace(rawPlate))

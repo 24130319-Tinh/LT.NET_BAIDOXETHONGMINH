@@ -54,6 +54,10 @@ bld/
 .env
 *.local.json
 
+# Ảnh xe lưu tạm trong quá trình chạy thử Check-in / Check-out
+**/Assets/SessionImages/*
+!**/Assets/SessionImages/.gitkeep
+
 # OS generated files
 .DS_Store
 Thumbs.db
