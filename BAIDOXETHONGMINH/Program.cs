@@ -4,15 +4,18 @@ namespace BAIDOXETHONGMINH;
 
 static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
     [STAThread]
     static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form1());
+        try
+        {
+            AppService.InitializeAsync().GetAwaiter().GetResult();
+            Application.Run(new MainLayout());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Không khởi tạo được dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 }

@@ -3,7 +3,6 @@ using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV4: quản lý khách hàng (chủ xe đăng ký vé tháng).</summary>
 public class CustomerService
 {
     private readonly CustomerRepository _repo = new();
@@ -11,7 +10,6 @@ public class CustomerService
 
     public Task<List<Customer>> GetAllAsync() => _repo.GetAllAsync();
 
-    /// <summary>Tìm theo họ tên, số điện thoại hoặc CCCD (để trống = lấy tất cả).</summary>
     public Task<List<Customer>> SearchAsync(string keyword)
     {
         keyword = (keyword ?? "").Trim();
@@ -51,7 +49,6 @@ public class CustomerService
         await _repo.DeleteAsync(customerId);
     }
 
-    /// <summary>Dùng khi đăng ký vé: đã có CCCD thì cập nhật tên, SĐT; chưa có thì tạo khách mới.</summary>
     public async Task<Customer> GetOrCreateAsync(string fullName, string phone, string identityCard)
     {
         var input = new Customer { FullName = fullName, Phone = phone, IdentityCard = identityCard };
@@ -70,7 +67,6 @@ public class CustomerService
         return existing;
     }
 
-    /// <summary>Kiểm tra số điện thoại, trả về số đã cắt khoảng trắng.</summary>
     public static string CheckPhone(string phone)
     {
         phone = (phone ?? "").Trim();

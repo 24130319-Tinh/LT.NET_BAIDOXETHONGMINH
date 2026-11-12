@@ -1,6 +1,5 @@
 namespace BAIDOXETHONGMINH.Models;
 
-/// <summary>Một dòng vé tháng kèm tên chủ xe, dùng để hiển thị trên DataGridView (không phải bảng CSDL).</summary>
 public class MonthlyPassView
 {
     public int PassId { get; set; }
@@ -15,14 +14,12 @@ public class MonthlyPassView
     public DateTime EndDate { get; set; }
     public string Status { get; set; } = "Active";
 
-    // ----- Phần hiển thị -----
     public string Code => $"MP-{PassId:00}";
     public string OwnerText => $"{OwnerName} ({Phone})";
     public string VehicleText => string.IsNullOrWhiteSpace(Brand) ? VehicleTypeName : $"{VehicleTypeName} • {Brand}";
     public string PeriodText => $"{StartDate:dd/MM/yyyy} → {EndDate:dd/MM/yyyy}";
     public string EndDateText => EndDate.ToString("dd/MM/yyyy");
 
-    /// <summary>ACTIVE (còn hạn), EXPIRING (còn dưới 7 ngày), EXPIRED (hết hạn), CANCELLED (đã hủy).</summary>
     public string State
     {
         get

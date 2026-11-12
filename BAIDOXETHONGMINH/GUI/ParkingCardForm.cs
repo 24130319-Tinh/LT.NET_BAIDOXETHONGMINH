@@ -1,9 +1,7 @@
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV3: quản lý thẻ xe (thêm, khóa, mở khóa, báo mất, tìm lại, xóa). Mở từ ParkingMapForm.</summary>
 public class ParkingCardForm : Form
 {
-    // Một dòng hiển thị trên bảng (record)
     private record CardRow(string CardCode, string LicensePlate, string StatusText);
 
     private readonly ParkingCardService _cards = AppService.Card;

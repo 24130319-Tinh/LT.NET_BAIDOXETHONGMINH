@@ -1,9 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng MonthlyPasses: Danh sách đăng ký vé tháng theo biển số xe
-/// Status: "Active" (Còn hạn), "Expired" (Hết hạn), "Cancelled" (Đã hủy)
-/// </summary>
 public class MonthlyPass
 {
     public int PassId { get; set; }

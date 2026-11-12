@@ -1,351 +1,290 @@
-using BAIDOXETHONGMINH.DTO.Entities;
-using BAIDOXETHONGMINH.Models;
-
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// NV3: sơ đồ vị trí đỗ xe 2D và bảng giá (frmParkingMap).
-/// Bấm vào một ô để xem thông tin, đổi Bảo trì / Trống. Tự vẽ lại khi ParkingMapService báo MapChanged.
-/// </summary>
-public class ParkingMapForm : Form
+public partial class ParkingMapForm : Form
 {
-    private static readonly Color AvailableColor = Color.FromArgb(165, 214, 167);
-    private static readonly Color OccupiedColor = Color.FromArgb(239, 154, 154);
-    private static readonly Color MaintenanceColor = Color.FromArgb(255, 224, 130);
+    private static readonly Color AvailableColor = Color.FromArgb(220, 252, 231);
+    private static readonly Color OccupiedColor = Color.FromArgb(254, 226, 226);
+    private static readonly Color MaintenanceColor = Color.FromArgb(254, 243, 199);
 
     private readonly ParkingMapService _map = AppService.Map;
-    private readonly PricingService _pricing = AppService.Pricing;
 
-    private readonly FlowLayoutPanel _zonesPanel = new()
+    private sealed class SlotItem
     {
-        Dock = DockStyle.Fill,
-        AutoScroll = true,
-        FlowDirection = FlowDirection.TopDown,
-        WrapContents = false,
-        Padding = new Padding(10)
-    };
-    private readonly Label _lblSubtitle = new() { AutoSize = true, ForeColor = Color.Gray, Left = 12, Top = 34 };
-    private readonly Label _lblSlotCode = new() { AutoSize = true, Left = 14, Top = 26 };
-    private readonly Label _lblSlotStatus = new() { AutoSize = true, Left = 14, Top = 52 };
-    private readonly Label _lblSlotPlate = new() { AutoSize = true, Left = 14, Top = 78 };
-    private readonly Button _btnMaintenance = new() { Text = "Đổi trạng thái Bảo trì / Mở trống", Left = 14, Top = 108, Width = 262, Height = 32 };
-    private readonly Button _btnDeleteSlot = new() { Text = "Xóa ô này", Left = 14, Top = 146, Width = 262, Height = 28 };
-    private readonly Label _lblPricing = new() { AutoSize = true, Left = 4, Top = 4 };
+        public string Code { get; init; } = "";
+        public string Status { get; set; } = "Available";
+        public string? Plate { get; set; }
+        public Button? ButtonRef { get; set; }
+    }
 
-    private readonly Dictionary<string, Button> _slotButtons = new();
-    private List<ZoneView> _zones = new();
-    private List<VehicleType> _types = new();
-    private string? _selectedCode;
+    private readonly List<SlotItem> _slotsA = new();
+
+    private readonly List<SlotItem> _slotsB = new();
+
+    private SlotItem? _selectedSlot;
 
     public ParkingMapForm()
     {
-        Text = "Sơ đồ bãi đỗ xe & Bảng giá";
-        Size = new Size(1000, 680);
-        MinimumSize = new Size(760, 480);
-        StartPosition = FormStartPosition.CenterScreen;
+        InitializeComponent();
 
-        BuildLayout();
+        RoundedUiHelper.AttachRoundedFrame(lblLegend, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlZoneA, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlZoneB, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlSlotDetail, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlPricingCard, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(btnToggleMaint, 10, RoundedUiHelper.SlateBorder);
 
-        _btnMaintenance.Click += async (_, _) => await ToggleMaintenanceAsync();
-        _btnDeleteSlot.Click += async (_, _) => await DeleteSlotAsync();
+        InitializeDataBindings();
+    }
 
-        _map.MapChanged += OnMapChanged;                    // đăng ký sự kiện (multicast delegate)
-        FormClosed += (_, _) => _map.MapChanged -= OnMapChanged;
-        ResizeEnd += async (_, _) => await RenderAsync();
-        Load += async (_, _) =>
+    private void BuildSlotGrid(List<SlotItem> items, TableLayoutPanel grid, int cols)
+    {
+        foreach (Control control in grid.Controls.Cast<Control>().ToArray()) control.Dispose();
+        for (int i = 0; i < items.Count; i++)
         {
-            if (await Dialogs.RunAsync(AppService.InitializeAsync)) await RenderAsync();
+            var slot = items[i];
+            var btn = new Button
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(4),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Font = new Font("Consolas", 8.8F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            slot.ButtonRef = btn;
+            btn.Click += (s, e) => SelectSlot(slot);
+            UpdateSlotButtonAppearance(slot);
+            grid.Controls.Add(btn, i % cols, i / cols);
+        }
+    }
+
+    private void UpdateSlotButtonAppearance(SlotItem slot)
+    {
+        if (slot.ButtonRef == null) return;
+
+        Color bg = AvailableColor;
+        Color border = Color.FromArgb(74, 222, 128);
+        string sub = "Trống";
+
+        if (slot.Status == "Occupied")
+        {
+            bg = OccupiedColor;
+            border = Color.FromArgb(248, 113, 113);
+            sub = slot.Plate ?? "Có xe";
+        }
+        else if (slot.Status == "Maintenance")
+        {
+            bg = MaintenanceColor;
+            border = Color.FromArgb(251, 191, 36);
+            sub = "Bảo trì";
+        }
+
+        if (_selectedSlot == slot)
+        {
+            border = Color.FromArgb(37, 99, 235);
+        }
+
+        slot.ButtonRef.BackColor = bg;
+        slot.ButtonRef.Text = $"{slot.Code}\n{sub}";
+        RoundedUiHelper.AttachRoundedFrame(slot.ButtonRef, 10, border);
+    }
+
+    private void SelectSlot(SlotItem slot)
+    {
+        var prev = _selectedSlot;
+        _selectedSlot = slot;
+        if (prev != null) UpdateSlotButtonAppearance(prev);
+        UpdateSlotButtonAppearance(slot);
+
+        lblDetCodeVal.Text = slot.Code;
+        lblDetStatusVal.Text = slot.Status switch
+        {
+            "Occupied"    => "Đang có xe (Occupied)",
+            "Maintenance" => "Đang bảo trì (Maintenance)",
+            _             => "Đang trống (Available)"
         };
+        lblDetPlateVal.Text = slot.Plate ?? "—";
+        btnToggleMaint.Enabled = slot.Status != SlotStatus.Occupied;
     }
 
-    // ---------- Giao diện ----------
-    private void BuildLayout()
+    private bool _refreshing;
+    private bool _refreshAgain;
+    private readonly Dictionary<string, (Panel Panel, Label Title, TableLayoutPanel Grid, List<SlotItem> Slots, int Columns)> _zoneViews = new();
+
+    private void InitializeDataBindings()
     {
-        // Cột phải: thông tin ô đang chọn + bảng giá
-        var groupSlot = new GroupBox { Text = "Thông tin Ô đỗ đang chọn", Dock = DockStyle.Top, Height = 186 };
-        groupSlot.Controls.AddRange(new Control[] { _lblSlotCode, _lblSlotStatus, _lblSlotPlate, _btnMaintenance, _btnDeleteSlot });
-
-        var pricingPanel = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(6) };
-        pricingPanel.Controls.Add(_lblPricing);
-        var groupPricing = new GroupBox { Text = "Cấu hình Bảng giá (PricingRule)", Dock = DockStyle.Fill };
-        groupPricing.Controls.Add(pricingPanel);
-
-        var right = new Panel { Dock = DockStyle.Right, Width = 300, Padding = new Padding(8) };
-        right.Controls.Add(groupPricing);
-        right.Controls.Add(groupSlot);
-
-        // Thanh nút chức năng
-        var tools = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(8, 5, 8, 0) };
-        tools.Controls.Add(MakeButton("Thêm khu", async (_, _) => await AddZoneAsync()));
-        tools.Controls.Add(MakeButton("Thêm ô", async (_, _) => await AddSlotsAsync()));
-        tools.Controls.Add(MakeButton("Sửa bảng giá", async (_, _) => await EditPricingAsync()));
-        tools.Controls.Add(MakeButton("Quản lý thẻ xe", async (_, _) => await ManageCardsAsync()));
-        tools.Controls.Add(MakeButton("Làm mới", async (_, _) => await RenderAsync()));
-
-        // Tiêu đề + chú thích màu
-        var header = new Panel { Dock = DockStyle.Top, Height = 62 };
-        header.Controls.Add(new Label
+        _zoneViews["A"] = (pnlZoneA, lblZoneATitle, tlpGridA, _slotsA, 6);
+        _zoneViews["B"] = (pnlZoneB, lblZoneBTitle, tlpGridB, _slotsB, 4);
+        foreach (var pair in _zoneViews) AttachZoneMenu(pair.Value.Panel, pair.Key);
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Cấu hình bảng giá", null, async (_, _) => await EditPricingAsync());
+        menu.Items.Add("Quản lý thẻ xe", null, (_, _) => { using var form = new ParkingCardForm(); form.ShowDialog(this); });
+        pnlPricingCard.ContextMenuStrip = menu;
+        lblPricingTitle.DoubleClick += async (_, _) => await EditPricingAsync();
+        _map.MapChanged += OnMapChanged;
+        FormClosed += (_, _) => _map.MapChanged -= OnMapChanged;
+        Load += async (_, _) => await Dialogs.RunAsync(async () =>
         {
-            Text = "SƠ ĐỒ VỊ TRÍ ĐỖ XE 2D & CẤU HÌNH BẢNG GIÁ",
-            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-            AutoSize = true,
-            UseMnemonic = false,
-            Left = 12,
-            Top = 8
+            await AppService.InitializeAsync();
+            await RefreshMapAsync();
         });
-        header.Controls.Add(_lblSubtitle);
-        var legend = new FlowLayoutPanel { Dock = DockStyle.Right, Width = 270, Padding = new Padding(0, 14, 0, 0) };
-        legend.Controls.Add(MakeLegend("Trống", AvailableColor));
-        legend.Controls.Add(MakeLegend("Đang đỗ", OccupiedColor));
-        legend.Controls.Add(MakeLegend("Bảo trì", MaintenanceColor));
-        header.Controls.Add(legend);
-
-        // Thứ tự Add: control Fill trước, các control Dock cạnh sau (cái thêm sau nằm ngoài cùng)
-        Controls.Add(_zonesPanel);
-        Controls.Add(right);
-        Controls.Add(tools);
-        Controls.Add(header);
     }
 
-    private static Button MakeButton(string text, EventHandler onClick)
-    {
-        var button = new Button { Text = text, AutoSize = true, Height = 30, Margin = new Padding(3) };
-        button.Click += onClick;
-        return button;
-    }
-
-    private static Label MakeLegend(string text, Color color) => new Label
-    {
-        Text = text,
-        BackColor = color,
-        AutoSize = false,
-        Width = 80,
-        Height = 26,
-        TextAlign = ContentAlignment.MiddleCenter
-    };
-
-    // ---------- Vẽ sơ đồ ----------
     private void OnMapChanged()
     {
-        if (InvokeRequired)
-        {
-            BeginInvoke(new Action(OnMapChanged));
-            return;
-        }
-        _ = RenderAsync();
+        if (IsDisposed || !IsHandleCreated) return;
+        if (InvokeRequired) { BeginInvoke(new Action(OnMapChanged)); return; }
+        _ = Dialogs.RunAsync(RefreshMapAsync);
     }
 
-    private async Task RenderAsync()
+    private async Task RefreshMapAsync()
     {
+        if (_refreshing) { _refreshAgain = true; return; }
+        _refreshing = true;
         try
         {
-            _zones = await _map.GetMapAsync();
-            _types = await _pricing.GetVehicleTypesAsync();
-            var rules = await _pricing.GetAllAsync();
-
-            ShowZones();
-            ShowPricing(rules);
-            ShowSlotInfo();
+            do
+            {
+                _refreshAgain = false;
+                string? selected = _selectedSlot?.Code;
+                var zones = await _map.GetMapAsync();
+                var rules = await AppService.Pricing.GetAllAsync();
+                if (IsDisposed) return;
+                foreach (var view in _zoneViews.Values) view.Panel.Visible = false;
+                foreach (var zone in zones)
+                {
+                    if (!_zoneViews.TryGetValue(zone.Zone.ZoneId, out var view))
+                    {
+                        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(6), Padding = new Padding(16) };
+                        var title = new Label { Dock = DockStyle.Top, Height = 30, Font = lblZoneATitle.Font, ForeColor = lblZoneATitle.ForeColor };
+                        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6 };
+                        for (int i = 0; i < 6; i++) grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 6));
+                        panel.Controls.Add(grid);
+                        panel.Controls.Add(title);
+                        RoundedUiHelper.AttachRoundedFrame(panel, 16, RoundedUiHelper.CardBorder);
+                        int row = tlpLeftZones.RowCount++;
+                        tlpLeftZones.RowStyles.Add(new RowStyle(SizeType.Absolute, 240));
+                        tlpLeftZones.Controls.Add(panel, 0, row);
+                        tlpLeftZones.AutoScroll = true;
+                        view = (panel, title, grid, new List<SlotItem>(), 6);
+                        _zoneViews[zone.Zone.ZoneId] = view;
+                        AttachZoneMenu(panel, zone.Zone.ZoneId);
+                    }
+                    view.Panel.Visible = true;
+                    view.Title.Text = $"{zone.Zone.ZoneName} ({zone.Total} vị trí)";
+                    view.Slots.Clear();
+                    view.Slots.AddRange(zone.Slots.Select(s => new SlotItem { Code = s.SlotCode, Status = s.Status, Plate = s.CurrentLicensePlate }));
+                    view.Grid.RowCount = Math.Max(1, (view.Slots.Count + view.Columns - 1) / view.Columns);
+                    view.Grid.RowStyles.Clear();
+                    for (int i = 0; i < view.Grid.RowCount; i++) view.Grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F / view.Grid.RowCount));
+                    BuildSlotGrid(view.Slots, view.Grid, view.Columns);
+                }
+                var allSlots = _zoneViews.Values.Where(v => v.Panel.Visible).SelectMany(v => v.Slots).ToList();
+                _selectedSlot = null;
+                var chosen = allSlots.FirstOrDefault(s => s.Code == selected) ?? allSlots.FirstOrDefault();
+                if (chosen != null) SelectSlot(chosen);
+                else
+                {
+                    lblDetCodeVal.Text = lblDetStatusVal.Text = lblDetPlateVal.Text = "—";
+                }
+                btnToggleMaint.Enabled = chosen != null && chosen.Status != SlotStatus.Occupied;
+                foreach (Control control in flpPricingRows.Controls.Cast<Control>().ToArray()) control.Dispose();
+                var bike = rules.FirstOrDefault(r => r.VehicleTypeId == "XEMAY");
+                var car = rules.FirstOrDefault(r => r.VehicleTypeId == "OTO");
+                AddPriceItem("Xe máy (Ngày / Đêm)", bike == null ? "Chưa cấu hình" : $"{Fmt.Number(bike.DayTurnPrice)} / {Fmt.Money(bike.OvernightPrice)}");
+                AddPriceItem("Ô tô (Mỗi giờ)", car == null ? "Chưa cấu hình" : Fmt.Money(car.HourlyPrice) + " / giờ");
+                AddPriceItem("Vé tháng (XM / Ô tô)", $"{(bike == null ? "—" : Fmt.MoneyK(bike.MonthlyPassPrice))} / {(car == null ? "—" : Fmt.MoneyK(car.MonthlyPassPrice))}");
+                AddPriceItem("Phạt mất thẻ", bike == null ? "Chưa cấu hình" : car == null || car.LostCardPenalty == bike.LostCardPenalty
+                    ? Fmt.Money(bike.LostCardPenalty) : $"{Fmt.MoneyK(bike.LostCardPenalty)} / {Fmt.MoneyK(car.LostCardPenalty)}");
+            } while (_refreshAgain);
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Không tải được dữ liệu: " + ex.Message, "Lỗi CSDL", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+        finally { _refreshing = false; }
     }
 
-    private void ShowZones()
+    private async void BtnToggleMaint_Click(object? sender, EventArgs e)
     {
-        _zonesPanel.SuspendLayout();
-        var oldControls = _zonesPanel.Controls.Cast<Control>().ToList();
-        _zonesPanel.Controls.Clear();
-        foreach (var control in oldControls) control.Dispose();
-        _slotButtons.Clear();
-
-        int width = Math.Max(300, _zonesPanel.ClientSize.Width - 40);
-        foreach (var zone in _zones)
-            _zonesPanel.Controls.Add(BuildZoneBox(zone, width));
-        _zonesPanel.ResumeLayout();
-
-        int total = _zones.Sum(z => z.Total);
-        int free = _zones.Sum(z => z.Available);
-        _lblSubtitle.Text = $"Bấm vào từng ô để kiểm tra xe hoặc khóa Bảo trì   |   Còn trống: {free} / {total} ô";
-    }
-
-    private GroupBox BuildZoneBox(ZoneView zone, int width)
-    {
-        string typeName = _types.FirstOrDefault(t => t.VehicleTypeId == zone.Zone.VehicleTypeId)?.TypeName
-                          ?? zone.Zone.VehicleTypeId;
-        var box = new GroupBox
-        {
-            Text = $"{zone.Zone.ZoneName} — {typeName} ({zone.Total} vị trí)",
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MaximumSize = new Size(width, 0),
-            MinimumSize = new Size(width, 70),
-            Padding = new Padding(8, 6, 8, 8),
-            Margin = new Padding(0, 0, 0, 12)
-        };
-
-        var flow = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MaximumSize = new Size(width - 20, 0),
-            Dock = DockStyle.Top,
-            WrapContents = true
-        };
-        foreach (var slot in zone.Slots)
-        {
-            var button = BuildSlotButton(slot);
-            _slotButtons[slot.SlotCode] = button;
-            flow.Controls.Add(button);
-        }
-
-        box.Controls.Add(flow);
-        return box;
-    }
-
-    private Button BuildSlotButton(ParkingSlot slot)
-    {
-        string label = "Trống";
-        if (slot.Status == SlotStatus.Occupied) label = slot.CurrentLicensePlate ?? "";
-        else if (slot.Status == SlotStatus.Maintenance) label = "Bảo trì";
-
-        var button = new Button
-        {
-            Width = 92,
-            Height = 52,
-            Margin = new Padding(4),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = ColorOf(slot.Status),
-            Text = $"{slot.SlotCode}\n{label}",
-            TextAlign = ContentAlignment.MiddleLeft
-        };
-        MarkSelected(button, slot.SlotCode == _selectedCode);
-        button.Click += (_, _) => SelectSlot(slot.SlotCode);
-        return button;
-    }
-
-    private static Color ColorOf(string status)
-    {
-        if (status == SlotStatus.Occupied) return OccupiedColor;
-        if (status == SlotStatus.Maintenance) return MaintenanceColor;
-        return AvailableColor;
-    }
-
-    private static void MarkSelected(Button button, bool selected)
-    {
-        button.FlatAppearance.BorderSize = selected ? 3 : 1;
-        button.FlatAppearance.BorderColor = selected ? Color.RoyalBlue : Color.Gray;
-    }
-
-    // ---------- Ô đang chọn ----------
-    private void SelectSlot(string slotCode)
-    {
-        _selectedCode = slotCode;
-        foreach (var pair in _slotButtons)
-            MarkSelected(pair.Value, pair.Key == slotCode);
-        ShowSlotInfo();
-    }
-
-    private void ShowSlotInfo()
-    {
-        var slot = _zones.SelectMany(z => z.Slots).FirstOrDefault(s => s.SlotCode == _selectedCode);
-        bool has = slot != null;
-        _btnMaintenance.Enabled = has;
-        _btnDeleteSlot.Enabled = has;
-
-        if (slot == null)
-        {
-            _lblSlotCode.Text = "Mã vị trí: —";
-            _lblSlotStatus.Text = "Trạng thái: —";
-            _lblSlotPlate.Text = "Biển số xe: —";
-            return;
-        }
-
-        string statusText = "Đang trống (Available)";
-        if (slot.Status == SlotStatus.Occupied) statusText = "Đang có xe (Occupied)";
-        else if (slot.Status == SlotStatus.Maintenance) statusText = "Đang bảo trì (Maintenance)";
-
-        _lblSlotCode.Text = "Mã vị trí: " + slot.SlotCode;
-        _lblSlotStatus.Text = "Trạng thái: " + statusText;
-        _lblSlotPlate.Text = "Biển số xe: " + (string.IsNullOrEmpty(slot.CurrentLicensePlate) ? "—" : slot.CurrentLicensePlate);
-    }
-
-    private void ShowPricing(List<PricingRule> rules)
-    {
-        var lines = new List<string>();
-        foreach (var rule in rules)
-        {
-            string typeName = _types.FirstOrDefault(t => t.VehicleTypeId == rule.VehicleTypeId)?.TypeName ?? rule.VehicleTypeId;
-            lines.Add(typeName.ToUpper());
-            lines.Add($"   Ngày / Đêm: {Fmt.Money(rule.DayTurnPrice)} / {Fmt.Money(rule.OvernightPrice)}");
-            lines.Add($"   Mỗi giờ: {Fmt.Money(rule.HourlyPrice)}");
-            lines.Add($"   Vé tháng: {Fmt.Money(rule.MonthlyPassPrice)}");
-            lines.Add($"   Phạt mất thẻ: {Fmt.Money(rule.LostCardPenalty)}");
-            lines.Add("");
-        }
-        _lblPricing.Text = lines.Count == 0 ? "Chưa có bảng giá." : string.Join(Environment.NewLine, lines);
-    }
-
-    // ---------- Thao tác ----------
-    private async Task ToggleMaintenanceAsync()
-    {
-        string? code = _selectedCode;
-        if (code == null) return;
-        await Dialogs.RunAsync(() => _map.ToggleMaintenanceAsync(code)); // thành công thì MapChanged tự vẽ lại
-    }
-
-    private async Task DeleteSlotAsync()
-    {
-        string? code = _selectedCode;
-        if (code == null) return;
-
-        var answer = MessageBox.Show($"Xóa ô {code}?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (answer != DialogResult.Yes) return;
-
-        if (await Dialogs.RunAsync(() => _map.DeleteSlotAsync(code)))
-            _selectedCode = null;
-    }
-
-    private async Task AddZoneAsync()
-    {
-        var v = Dialogs.Prompt(this, "Thêm khu", ("Mã khu (VD: C)", ""), ("Tên khu", ""), ("Loại xe (XEMAY / OTO)", "XEMAY"), ("Sức chứa", "10"));
-        if (v == null) return;
-
-        if (!int.TryParse(v[3], out int capacity))
-        {
-            MessageBox.Show("Sức chứa phải là số.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        await Dialogs.RunAsync(() => _map.AddZoneAsync(v[0], v[1], v[2], capacity));
-    }
-
-    private async Task AddSlotsAsync()
-    {
-        var v = Dialogs.Prompt(this, "Thêm ô đỗ", ("Mã khu", ""), ("Tiền tố mã ô (VD: A-)", ""), ("Số lượng ô", "1"));
-        if (v == null) return;
-
-        if (!int.TryParse(v[2], out int count))
-        {
-            MessageBox.Show("Số lượng phải là số.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        await Dialogs.RunAsync(() => _map.AddSlotsAsync(v[0], v[1], count));
+        if (_selectedSlot == null) return;
+        string code = _selectedSlot.Code;
+        btnToggleMaint.Enabled = false;
+        await Dialogs.RunAsync(async () => { await _map.ToggleMaintenanceAsync(code); await RefreshMapAsync(); });
+        if (!IsDisposed) btnToggleMaint.Enabled = _selectedSlot != null && _selectedSlot.Status != SlotStatus.Occupied;
     }
 
     private async Task EditPricingAsync()
     {
         using var form = new PricingForm();
         form.ShowDialog(this);
-        await RenderAsync();
+        await Dialogs.RunAsync(RefreshMapAsync);
     }
 
-    private async Task ManageCardsAsync()
+    private void AttachZoneMenu(Control panel, string zoneId)
     {
-        using var form = new ParkingCardForm();
-        form.ShowDialog(this);
-        await RenderAsync();
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Thêm ô đỗ", null, async (_, _) =>
+        {
+            var input = Dialogs.Prompt(this, "Thêm ô đỗ", ("Tiền tố", zoneId + "-"), ("Số lượng", "1"));
+            if (input == null) return;
+            await Dialogs.RunAsync(async () =>
+            {
+                if (!int.TryParse(input[1], out int count)) throw new ServiceException("Số lượng không hợp lệ.");
+                await _map.AddSlotsAsync(zoneId, input[0], count);
+                await RefreshMapAsync();
+            });
+        });
+        menu.Items.Add("Xóa ô đang chọn", null, async (_, _) =>
+        {
+            if (_selectedSlot == null || !_zoneViews[zoneId].Slots.Any(s => s.Code == _selectedSlot.Code)) return;
+            await Dialogs.RunAsync(async () => { await _map.DeleteSlotAsync(_selectedSlot.Code); await RefreshMapAsync(); });
+        });
+        menu.Items.Add("Thêm khu", null, async (_, _) =>
+        {
+            var input = Dialogs.Prompt(this, "Thêm khu", ("Mã khu", "C"), ("Tên khu", "Khu C"), ("Loại xe", "XEMAY"), ("Sức chứa", "20"));
+            if (input == null) return;
+            await Dialogs.RunAsync(async () =>
+            {
+                if (!int.TryParse(input[3], out int count)) throw new ServiceException("Sức chứa không hợp lệ.");
+                await _map.AddZoneAsync(input[0], input[1], input[2], count);
+                await RefreshMapAsync();
+            });
+        });
+        menu.Items.Add("Xóa khu này", null, async (_, _) => await Dialogs.RunAsync(async () =>
+        {
+            await _map.DeleteZoneAsync(zoneId);
+            await RefreshMapAsync();
+        }));
+        panel.ContextMenuStrip = menu;
     }
-
+    private void AddPriceItem(string label, string price)
+    {
+        var row = new Panel
+        {
+            Width = 285,
+            Height = 42,
+            BackColor = Color.FromArgb(248, 250, 252),
+            Margin = new Padding(0, 4, 0, 4),
+            Padding = new Padding(10, 0, 10, 0)
+        };
+        var l1 = new Label
+        {
+            Text = label,
+            Dock = DockStyle.Left,
+            Width = 155,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Segoe UI", 8.8F)
+        };
+        var l2 = new Label
+        {
+            Text = price,
+            Dock = DockStyle.Right,
+            Width = 105,
+            TextAlign = ContentAlignment.MiddleRight,
+            Font = new Font("Consolas", 9F, FontStyle.Bold),
+            ForeColor = label.Contains("Phạt") ? Color.FromArgb(225, 29, 72) : Color.FromArgb(15, 23, 42)
+        };
+        row.Controls.Add(l2);
+        row.Controls.Add(l1);
+        RoundedUiHelper.AttachRoundedFrame(row, 8, RoundedUiHelper.CardBorder);
+        flpPricingRows.Controls.Add(row);
+    }
 }

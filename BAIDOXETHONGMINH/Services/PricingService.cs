@@ -2,7 +2,6 @@ using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV3: cấu hình bảng giá theo loại xe.</summary>
 public class PricingService
 {
     private readonly ParkingRepository _repo = new();
@@ -13,7 +12,6 @@ public class PricingService
 
     public Task<PricingRule?> GetByVehicleTypeAsync(string vehicleTypeId) => _repo.GetPricingRuleAsync(vehicleTypeId);
 
-    /// <summary>NV khác gọi để lấy giá; ném lỗi nếu loại xe chưa có bảng giá.</summary>
     public async Task<PricingRule> GetRequiredAsync(string vehicleTypeId)
     {
         var rule = await _repo.GetPricingRuleAsync(vehicleTypeId);
@@ -21,7 +19,6 @@ public class PricingService
         return rule;
     }
 
-    /// <summary>Lưu bảng giá (chưa có thì thêm, có rồi thì cập nhật).</summary>
     public async Task SaveAsync(PricingRule rule)
     {
         if (string.IsNullOrWhiteSpace(rule.VehicleTypeId)) throw new ServiceException("Phải chọn loại xe.");

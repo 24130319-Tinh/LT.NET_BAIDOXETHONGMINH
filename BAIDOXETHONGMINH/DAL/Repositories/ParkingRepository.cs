@@ -4,10 +4,8 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>Truy vấn các bảng VehicleTypes, PricingRules, ParkingZones, ParkingSlots, ParkingCards bằng ADO.NET (SQLite).</summary>
 public class ParkingRepository
 {
-    // ---------- Loại xe & bảng giá ----------
     private static VehicleType MapType(SqliteDataReader r) => new()
     {
         VehicleTypeId = r.GetString(0),
@@ -39,7 +37,6 @@ public class ParkingRepository
     public Task<PricingRule?> GetPricingRuleAsync(string vehicleTypeId) =>
         SqliteHelper.QueryFirstAsync(SelectRule + " WHERE VehicleTypeId = @type", MapRule, ("@type", vehicleTypeId));
 
-    /// <summary>Loại xe đã có bảng giá thì cập nhật, chưa có thì thêm mới (VehicleTypeId là cột UNIQUE).</summary>
     public Task SavePricingRuleAsync(PricingRule rule) =>
         SqliteHelper.ExecuteAsync(
             @"INSERT INTO PricingRules (VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt)
@@ -55,7 +52,6 @@ public class ParkingRepository
             ("@hour", rule.HourlyPrice), ("@month", rule.MonthlyPassPrice), ("@penalty", rule.LostCardPenalty),
             ("@updated", rule.UpdatedAt));
 
-    // ---------- Khu ----------
     private static ParkingZone MapZone(SqliteDataReader r) => new()
     {
         ZoneId = r.GetString(0),
@@ -84,7 +80,6 @@ public class ParkingRepository
         }
     }
 
-    // ---------- Ô đỗ ----------
     private const string SelectSlot = "SELECT SlotCode, ZoneId, Status, CurrentLicensePlate FROM ParkingSlots";
 
     private static ParkingSlot MapSlot(SqliteDataReader r) => new()
@@ -101,7 +96,6 @@ public class ParkingRepository
     public Task<ParkingSlot?> GetSlotAsync(string slotCode) =>
         SqliteHelper.QueryFirstAsync(SelectSlot + " WHERE SlotCode = @code", MapSlot, ("@code", slotCode));
 
-    /// <summary>Thêm nhiều ô trong một Transaction (hoặc thêm hết, hoặc không thêm ô nào).</summary>
     public Task AddSlotsAsync(List<ParkingSlot> slots) =>
         SqliteHelper.InTransactionAsync(async (connection, tx) =>
         {
@@ -131,7 +125,6 @@ public class ParkingRepository
         }
     }
 
-    // ---------- Thẻ xe ----------
     private const string SelectCard = "SELECT CardCode, LicensePlate, Status FROM ParkingCards";
 
     private static ParkingCard MapCard(SqliteDataReader r) => new()
