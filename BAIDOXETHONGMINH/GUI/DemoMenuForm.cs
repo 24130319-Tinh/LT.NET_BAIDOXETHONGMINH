@@ -1,9 +1,5 @@
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// Menu tạm để mở các màn hình của NV3, NV4 khi chưa có form đăng nhập và menu chính.
-/// Khi nhóm có MainLayout/MenuForm thì xóa file này và đổi lại Program.cs thành Application.Run(new Form1()).
-/// </summary>
 public class DemoMenuForm : Form
 {
     public DemoMenuForm()

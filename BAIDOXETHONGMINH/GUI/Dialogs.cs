@@ -1,9 +1,7 @@
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>Hàm dùng chung cho các Form: chạy thao tác nghiệp vụ có bắt lỗi và hộp thoại nhập liệu.</summary>
 public static class Dialogs
 {
-    /// <summary>Chạy thao tác; lỗi nghiệp vụ hiện thành hộp thoại thay vì làm chương trình sập. Trả về true nếu thành công.</summary>
     public static async Task<bool> RunAsync(Func<Task> action)
     {
         try
@@ -22,7 +20,6 @@ public static class Dialogs
         return false;
     }
 
-    /// <summary>Giống RunAsync nhưng trả về kết quả; trả null nếu có lỗi.</summary>
     public static async Task<T?> TryAsync<T>(Func<Task<T>> action) where T : class
     {
         try
@@ -40,7 +37,6 @@ public static class Dialogs
         return null;
     }
 
-    /// <summary>Hộp thoại nhập nhiều trường (nhãn, giá trị mặc định). Trả về null nếu bấm Hủy.</summary>
     public static string[]? Prompt(IWin32Window owner, string title, params (string Label, string Value)[] fields)
     {
         using var dialog = new Form

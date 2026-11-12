@@ -2,12 +2,10 @@ using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV3: quản lý thẻ xe. NV1, NV2 gọi IssueAsync / ReturnAsync / ReportLostAsync.</summary>
 public class ParkingCardService
 {
     private readonly ParkingRepository _repo = new();
 
-    // Trạng thái nào được chuyển sang trạng thái nào
     private static readonly Dictionary<string, string[]> Allowed = new()
     {
         [CardStatus.Available] = new[] { CardStatus.InUse, CardStatus.Locked, CardStatus.Lost },
@@ -16,7 +14,6 @@ public class ParkingCardService
         [CardStatus.Locked] = new[] { CardStatus.Available, CardStatus.Lost }
     };
 
-    /// <summary>Tìm theo mã thẻ hoặc biển số (để trống = lấy tất cả).</summary>
     public async Task<List<ParkingCard>> SearchAsync(string keyword)
     {
         var cards = await _repo.GetCardsAsync();
@@ -38,20 +35,17 @@ public class ParkingCardService
         await _repo.AddCardAsync(new ParkingCard { CardCode = cardCode, Status = CardStatus.Available });
     }
 
-    /// <summary>Cấp thẻ cho xe: Available -> InUse, gắn biển số.</summary>
     public Task IssueAsync(string cardCode, string licensePlate)
     {
         string plate = PlateHelper.Clean(licensePlate);
-        if (plate.Length == 0) throw new ServiceException("Biển số không hợp lệ.");
+        if (PlateHelper.Key(plate).Length == 0) throw new ServiceException("Biển số không hợp lệ.");
         return ChangeStatusAsync(cardCode, CardStatus.InUse, plate);
     }
 
-    /// <summary>Thu hồi thẻ khi xe ra: InUse -> Available.</summary>
     public Task ReturnAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Available, null);
 
     public Task ReportLostAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Lost, null, keepPlate: true);
 
-    /// <summary>Tìm lại thẻ đã báo mất: Lost -> Available.</summary>
     public Task RecoverAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Available, null);
 
     public Task LockAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Locked, null, keepPlate: true);

@@ -3,19 +3,12 @@ using BAIDOXETHONGMINH.Models;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// NV3: quản lý khu, ô đỗ, dữ liệu sơ đồ 2D.
-/// NV1, NV2 gọi FindAvailableSlotAsync / OccupyAsync / ReleaseAsync / ReleaseByPlateAsync.
-/// </summary>
 public class ParkingMapService
 {
     private readonly ParkingRepository _repo = new();
 
-    /// <summary>Form sơ đồ đăng ký sự kiện này (+=) để tự vẽ lại khi ô đỗ thay đổi.</summary>
     public event Action? MapChanged;
 
-    // ---------- Dữ liệu cho sơ đồ 2D ----------
-    /// <summary>Lấy khu và ô bằng 2 câu truy vấn rồi ghép trong RAM.</summary>
     public async Task<List<ZoneView>> GetMapAsync()
     {
         var zones = await _repo.GetZonesAsync();
@@ -38,7 +31,6 @@ public class ParkingMapService
         return views;
     }
 
-    // ---------- Khu ----------
     public async Task AddZoneAsync(string zoneId, string zoneName, string vehicleTypeId, int maxCapacity)
     {
         zoneId = (zoneId ?? "").Trim().ToUpperInvariant();
@@ -75,8 +67,6 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
-    // ---------- Ô đỗ ----------
-    /// <summary>Thêm hàng loạt: mã ô = tiền tố + số thứ tự (A- + 01 = A-01). Kiểm tra không vượt sức chứa khu.</summary>
     public async Task AddSlotsAsync(string zoneId, string prefix, int count)
     {
         zoneId = (zoneId ?? "").Trim().ToUpperInvariant();
@@ -117,7 +107,6 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
-    /// <summary>Đổi qua lại: Trống &lt;-&gt; Bảo trì. Ô đang có xe thì không đổi được.</summary>
     public async Task ToggleMaintenanceAsync(string slotCode)
     {
         var slot = await GetSlotRequiredAsync(slotCode);
@@ -129,8 +118,6 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
-    // ---------- NV1, NV2 gọi ----------
-    /// <summary>Gợi ý ô trống đầu tiên cho loại xe, null nếu hết chỗ.</summary>
     public async Task<ParkingSlot?> FindAvailableSlotAsync(string vehicleTypeId)
     {
         var zones = await _repo.GetZonesAsync();
@@ -142,9 +129,9 @@ public class ParkingMapService
                     .FirstOrDefault();
     }
 
-    /// <summary>Xe vào đỗ: Available -> Occupied.</summary>
     public async Task OccupyAsync(string slotCode, string licensePlate)
     {
+        if (PlateHelper.Key(licensePlate).Length == 0) throw new ServiceException("Biển số không hợp lệ.");
         var slot = await GetSlotRequiredAsync(slotCode);
         if (slot.Status != SlotStatus.Available)
             throw new ServiceException($"Ô '{slot.SlotCode}' không trống.");
@@ -155,7 +142,6 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
-    /// <summary>Xe ra: Occupied -> Available.</summary>
     public async Task ReleaseAsync(string slotCode)
     {
         var slot = await GetSlotRequiredAsync(slotCode);
@@ -167,7 +153,6 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
-    /// <summary>Giải phóng ô theo biển số (lúc xe ra chỉ biết biển số). Trả về false nếu không thấy xe trong bãi.</summary>
     public async Task<bool> ReleaseByPlateAsync(string licensePlate)
     {
         var slots = await _repo.GetSlotsAsync();

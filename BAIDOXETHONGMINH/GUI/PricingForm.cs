@@ -2,7 +2,6 @@ using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV3: cấu hình bảng giá theo loại xe (PricingRule). Mở từ ParkingMapForm.</summary>
 public class PricingForm : Form
 {
     private readonly PricingService _pricing = AppService.Pricing;

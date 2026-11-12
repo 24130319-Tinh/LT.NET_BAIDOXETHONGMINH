@@ -22,7 +22,6 @@ public class MonthlyPassRepository
         Status = r.GetString(7)
     };
 
-    /// <summary>Vé tháng kèm tên và SĐT chủ xe .</summary>
     public Task<List<MonthlyPassView>> GetViewsAsync() =>
         SqliteHelper.QueryAsync(
             @"SELECT p.PassId, p.CustomerId, c.FullName, c.Phone, p.LicensePlate, p.VehicleTypeId,
@@ -53,8 +52,6 @@ public class MonthlyPassRepository
     public async Task<bool> HasAnyPassAsync(int customerId) =>
         await SqliteHelper.ScalarAsync("SELECT COUNT(*) FROM MonthlyPasses WHERE CustomerId = @id", ("@id", customerId)) > 0;
 
-    /// <summary>
-    /// Thêm vé tháng (và giao dịch thu tiền nếu có) trong một Transaction.
      public Task AddAsync(MonthlyPass pass, PaymentTransaction? payment = null) =>
         RunSavingAsync(() => AddCoreAsync(pass, payment));
 
@@ -78,7 +75,6 @@ public class MonthlyPassRepository
         });
     }
 
-    /// <summary>Cập nhật vé tháng (và ghi giao dịch thu tiền nếu có) trong một Transaction.</summary>
     public Task UpdateAsync(MonthlyPass pass, PaymentTransaction? payment = null) =>
         RunSavingAsync(() => UpdateCoreAsync(pass, payment));
 
@@ -121,7 +117,6 @@ public class MonthlyPassRepository
             ("@method", p.PaymentMethod), ("@user", p.CollectedByUserId), ("@shift", p.ShiftId),
             ("@note", p.Note), ("@created", p.CreatedAt));
 
-    /// <summary>Đổi hàng loạt vé quá hạn sang Expired bằng một lệnh UPDATE.</summary>
     public Task ExpireOverdueAsync(DateTime today) =>
         SqliteHelper.ExecuteAsync(
             "UPDATE MonthlyPasses SET Status = @expired WHERE Status = @active AND EndDate < @today",

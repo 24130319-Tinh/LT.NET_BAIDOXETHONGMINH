@@ -4,7 +4,6 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>Truy vấn bảng Customers bằng ADO.NET (SQLite).</summary>
 public class CustomerRepository
 {
     private const string SelectColumns = "SELECT CustomerId, FullName, Phone, IdentityCard, CreatedAt FROM Customers";
@@ -21,7 +20,6 @@ public class CustomerRepository
     public Task<List<Customer>> GetAllAsync() =>
         SqliteHelper.QueryAsync(SelectColumns + " ORDER BY FullName", Map);
 
-    /// <summary>Tìm theo họ tên, số điện thoại hoặc CCCD (chứa từ khóa).</summary>
     public Task<List<Customer>> SearchAsync(string keyword) =>
         SqliteHelper.QueryAsync(
             SelectColumns + " WHERE FullName LIKE @kw OR Phone LIKE @kw OR IdentityCard LIKE @kw ORDER BY FullName",
@@ -33,7 +31,6 @@ public class CustomerRepository
     public Task<Customer?> GetByIdentityCardAsync(string identityCard) =>
         SqliteHelper.QueryFirstAsync(SelectColumns + " WHERE IdentityCard = @cccd", Map, ("@cccd", identityCard));
 
-    /// <summary>Thêm khách hàng, điền CustomerId mới vào đối tượng.</summary>
     public async Task AddAsync(Customer customer)
     {
         long id = await SqliteHelper.InsertAsync(

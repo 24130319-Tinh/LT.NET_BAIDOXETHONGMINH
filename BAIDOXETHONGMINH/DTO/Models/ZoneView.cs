@@ -2,7 +2,6 @@ using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.Models;
 
-/// <summary>Model hiển thị một khu cùng các ô của nó trên sơ đồ 2D (không phải bảng CSDL).</summary>
 public class ZoneView
 {
     public ParkingZone Zone { get; set; } = new();

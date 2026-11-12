@@ -1,166 +1,105 @@
 using BAIDOXETHONGMINH.DTO.Entities;
-
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>NV4: quản lý khách hàng (thêm, sửa, xóa, tìm kiếm).</summary>
-public class CustomerForm : Form
+public partial class CustomerForm : Form
 {
-    private readonly CustomerService _service = AppService.Customers;
-
-    private readonly TextBox _txtSearch = new() { Dock = DockStyle.Top, PlaceholderText = "Tìm theo họ tên, SĐT hoặc CCCD..." };
-    private readonly DataGridView _grid = new()
-    {
-        Dock = DockStyle.Fill,
-        ReadOnly = true,
-        AllowUserToAddRows = false,
-        RowHeadersVisible = false,
-        MultiSelect = false,
-        SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-        AutoGenerateColumns = false,
-        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-        BackgroundColor = SystemColors.Window
-    };
-    private readonly TextBox _txtName = new();
-    private readonly TextBox _txtPhone = new();
-    private readonly TextBox _txtCccd = new();
-    private int _selectedId;
-    private bool _loading;
-
     public CustomerForm()
     {
-        Text = "Quản lý khách hàng";
-        Size = new Size(960, 560);
-        MinimumSize = new Size(760, 440);
-        StartPosition = FormStartPosition.CenterScreen;
+        InitializeComponent();
 
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Mã", DataPropertyName = "CustomerId", FillWeight = 20 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Họ tên", DataPropertyName = "FullName", FillWeight = 60 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Số điện thoại", DataPropertyName = "Phone", FillWeight = 40 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CCCD", DataPropertyName = "IdentityCard", FillWeight = 45 });
+        RoundedUiHelper.AttachRoundedFrame(pnlLeftForm, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlRightGrid, 16, RoundedUiHelper.CardBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlFullNameBox, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlPhoneBox, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlCccdBox, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(pnlSearchBox, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(btnAddCustomer, 10, Color.FromArgb(37, 99, 235));
+        RoundedUiHelper.AttachRoundedFrame(btnUpdateCustomer, 10, RoundedUiHelper.SlateBorder);
+        RoundedUiHelper.AttachRoundedFrame(btnDeleteCustomer, 10, Color.FromArgb(248, 113, 113));
 
-        // Bên trái: tìm kiếm + bảng. Bên phải: form nhập
-        var left = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-        left.Controls.Add(_grid);
-        left.Controls.Add(_txtSearch);
+        SetupCustomerGrid();
+    }
 
-        var right = new Panel { Dock = DockStyle.Right, Width = 320, Padding = new Padding(10) };
-        var group = new GroupBox { Text = "Thông tin khách hàng", Dock = DockStyle.Fill };
-        int y = 28;
-        AddField(group, "Họ tên (*)", _txtName, ref y);
-        AddField(group, "Số điện thoại (*)", _txtPhone, ref y);
-        AddField(group, "Số CCCD (*)", _txtCccd, ref y);
-        AddButton(group, "Thêm mới", 16, y + 6, async () => await AddAsync());
-        AddButton(group, "Lưu sửa", 160, y + 6, async () => await UpdateAsync());
-        AddButton(group, "Xóa", 16, y + 46, async () => await DeleteAsync());
-        AddButton(group, "Làm mới ô nhập", 160, y + 46, () => { ClearInput(); return Task.CompletedTask; });
-        right.Controls.Add(group);
+    private readonly CustomerService _service = AppService.Customers;
+    private bool _saving;
+    private int _searchVersion;
 
-        Controls.Add(left);
-        Controls.Add(right);
-
-        _txtSearch.TextChanged += async (_, _) => await LoadAsync();
-        _grid.SelectionChanged += (_, _) => ShowSelected();
-        Load += async (_, _) =>
+    private void SetupCustomerGrid()
+    {
+        dgvCustomers.Columns.Add("CustomerId", "Mã KH");
+        dgvCustomers.Columns.Add("FullName", "Họ và tên");
+        dgvCustomers.Columns.Add("Phone", "Số điện thoại");
+        dgvCustomers.Columns.Add("IdentityCard", "Số CCCD");
+        dgvCustomers.Columns.Add("CreatedAt", "Ngày đăng ký");
+        Load += async (_, _) => await Dialogs.RunAsync(async () =>
         {
-            if (await Dialogs.RunAsync(AppService.InitializeAsync)) await LoadAsync();
-        };
-    }
-
-    private static void AddField(Control parent, string label, TextBox box, ref int y)
-    {
-        parent.Controls.Add(new Label { Text = label, Left = 16, Top = y, Width = 270 });
-        box.Left = 16;
-        box.Top = y + 20;
-        box.Width = 270;
-        parent.Controls.Add(box);
-        y += 56;
-    }
-
-    private static void AddButton(Control parent, string text, int left, int top, Func<Task> onClick)
-    {
-        var button = new Button { Text = text, Left = left, Top = top, Width = 130, Height = 32 };
-        button.Click += async (_, _) => await onClick();
-        parent.Controls.Add(button);
-    }
-
-    private async Task LoadAsync()
-    {
-        await Dialogs.RunAsync(async () =>
-        {
-            var customers = await _service.SearchAsync(_txtSearch.Text);
-            _loading = true;
-            _grid.DataSource = customers;
-            _loading = false;
+            await AppService.InitializeAsync();
+            await RefreshCustomersAsync();
         });
+        txtSearchCustomer.TextChanged += async (_, _) => await Dialogs.RunAsync(RefreshCustomersAsync);
     }
 
-    private void ShowSelected()
-    {
-        if (_loading) return;
-        if (_grid.CurrentRow?.DataBoundItem is not Customer c) return;
-        _selectedId = c.CustomerId;
-        _txtName.Text = c.FullName;
-        _txtPhone.Text = c.Phone;
-        _txtCccd.Text = c.IdentityCard;
-    }
+    private Customer? SelectedCustomer => dgvCustomers.CurrentRow?.Tag as Customer;
 
-    private void ClearInput()
+    private async Task RefreshCustomersAsync()
     {
-        _selectedId = 0;
-        _txtName.Clear();
-        _txtPhone.Clear();
-        _txtCccd.Clear();
-        _loading = true;            // tránh SelectionChanged điền lại ô nhập
-        _grid.ClearSelection();
-        _loading = false;
-    }
-
-    private Customer ReadInput() => new()
-    {
-        CustomerId = _selectedId,
-        FullName = _txtName.Text,
-        Phone = _txtPhone.Text,
-        IdentityCard = _txtCccd.Text
-    };
-
-    private async Task AddAsync()
-    {
-        var customer = ReadInput();
-        customer.CustomerId = 0;
-        if (await Dialogs.RunAsync(() => _service.AddAsync(customer)))
+        int version = ++_searchVersion;
+        int? selectedId = SelectedCustomer?.CustomerId;
+        var customers = await _service.SearchAsync(txtSearchCustomer.Text);
+        if (IsDisposed || version != _searchVersion) return;
+        dgvCustomers.Rows.Clear();
+        foreach (var customer in customers)
         {
-            ClearInput();
-            await LoadAsync();
+            int index = dgvCustomers.Rows.Add($"KH-{customer.CustomerId:00}", customer.FullName,
+                customer.Phone, customer.IdentityCard, Fmt.Date(customer.CreatedAt));
+            dgvCustomers.Rows[index].Tag = customer;
+        }
+        var row = dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault(r =>
+            (r.Tag as Customer)?.CustomerId == selectedId) ?? dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault();
+        if (row != null) dgvCustomers.CurrentCell = row.Cells[0];
+        DgvCustomers_SelectionChanged(null, EventArgs.Empty);
+    }
+
+    private void DgvCustomers_SelectionChanged(object? sender, EventArgs e)
+    {
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        txtFullName.Text = customer.FullName;
+        txtPhone.Text = customer.Phone;
+        txtCccd.Text = customer.IdentityCard;
+    }
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        if (_saving) return;
+        _saving = true;
+        btnAddCustomer.Enabled = btnUpdateCustomer.Enabled = btnDeleteCustomer.Enabled = false;
+        try { await Dialogs.RunAsync(async () => { await action(); await RefreshCustomersAsync(); }); }
+        finally
+        {
+            _saving = false;
+            if (!IsDisposed) btnAddCustomer.Enabled = btnUpdateCustomer.Enabled = btnDeleteCustomer.Enabled = true;
         }
     }
 
-    private async Task UpdateAsync()
+    private async void BtnAddCustomer_Click(object? sender, EventArgs e) => await SaveAsync(() =>
+        _service.AddAsync(new Customer { FullName = txtFullName.Text, Phone = txtPhone.Text, IdentityCard = txtCccd.Text }));
+
+    private async void BtnUpdateCustomer_Click(object? sender, EventArgs e)
     {
-        if (_selectedId == 0)
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        await SaveAsync(() => _service.UpdateAsync(new Customer
         {
-            MessageBox.Show("Hãy chọn một khách hàng trong bảng.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-        var customer = ReadInput();
-        if (await Dialogs.RunAsync(() => _service.UpdateAsync(customer)))
-            await LoadAsync();
+            CustomerId = customer.CustomerId, FullName = txtFullName.Text,
+            Phone = txtPhone.Text, IdentityCard = txtCccd.Text
+        }));
     }
 
-    private async Task DeleteAsync()
+    private async void BtnDeleteCustomer_Click(object? sender, EventArgs e)
     {
-        if (_selectedId == 0)
-        {
-            MessageBox.Show("Hãy chọn một khách hàng trong bảng.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-        var answer = MessageBox.Show("Xóa khách hàng đang chọn?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (answer != DialogResult.Yes) return;
-
-        int id = _selectedId;
-        if (await Dialogs.RunAsync(() => _service.DeleteAsync(id)))
-        {
-            ClearInput();
-            await LoadAsync();
-        }
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        await SaveAsync(() => _service.DeleteAsync(customer.CustomerId));
     }
 }
