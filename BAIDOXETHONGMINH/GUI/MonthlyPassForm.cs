@@ -62,8 +62,14 @@ public partial class MonthlyPassForm : Form
 
     private async void RecalcFee()
     {
-        if (!_ready || cboVehicleType.SelectedValue is not string typeId) return;
-        int version = ++_feeVersion;
+if (!_ready) return;
+
+if (cboVehicleType.SelectedValue is not string typeId)
+{
+    ++_feeVersion;
+    lblFeeValue.Text = "Chưa chọn loại xe";
+    return;
+}        int version = ++_feeVersion;
         try
         {
             var fee = await _service.GetFeeAsync(typeId, Months);
