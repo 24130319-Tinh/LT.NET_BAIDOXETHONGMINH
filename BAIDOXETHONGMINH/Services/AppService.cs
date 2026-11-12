@@ -24,7 +24,6 @@ public class AppService
         {
             if (_ready) return;
             await SqliteDbContext.InitializeDatabaseAsync();
-            if (SeedSampleData) await SampleData.SeedIfEmptyAsync();
             CurrentUserId ??= (int)await SqliteHelper.ScalarAsync("SELECT UserId FROM Users WHERE Username = 'local'");
             _ready = true;
         }
