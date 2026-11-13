@@ -30,7 +30,7 @@ partial class CheckInOutForm
     private ComboBox cboCardIn = null!;
     private Label lblSlotIn = null!;
     private Panel pnlSlotInBox = null!;
-    private TextBox txtSlotIn = null!;
+    private ComboBox cboSlotIn = null!;
     private Panel pnlPassStatusBanner = null!;
     private Label lblPassStatusIn = null!;
     private Label lblPassTestHint = null!;
@@ -99,7 +99,7 @@ partial class CheckInOutForm
         cboCardIn = new ComboBox();
         lblSlotIn = new Label();
         pnlSlotInBox = new Panel();
-        txtSlotIn = new TextBox();
+        cboSlotIn = new ComboBox();
         pnlPassStatusBanner = new Panel();
         lblPassStatusIn = new Label();
         lblPassTestHint = new Label();
@@ -276,8 +276,6 @@ partial class CheckInOutForm
         cboVehicleTypeIn.FlatStyle = FlatStyle.Flat;
         cboVehicleTypeIn.DropDownStyle = ComboBoxStyle.DropDownList;
         cboVehicleTypeIn.Font = new Font("Segoe UI", 9.8F);
-        cboVehicleTypeIn.Items.AddRange(new object[] { "Xe máy (Khu A)", "Ô tô (Khu B)" });
-        cboVehicleTypeIn.SelectedIndex = 0;
         cboVehicleTypeIn.SelectedIndexChanged += CboVehicleTypeIn_SelectedIndexChanged;
         pnlVehicleTypeInBox.Controls.Add(cboVehicleTypeIn);
 
@@ -301,20 +299,18 @@ partial class CheckInOutForm
         cboCardIn.FlatStyle = FlatStyle.Flat;
         cboCardIn.DropDownStyle = ComboBoxStyle.DropDownList;
         cboCardIn.Font = new Font("Consolas", 9.8F);
-        cboCardIn.Items.AddRange(new object[] { "THE008 (Trống)", "THE009 (Trống)", "THE010 (Trống)" });
-        cboCardIn.SelectedIndex = 0;
         pnlCardInBox.Controls.Add(cboCardIn);
 
         pnlSlotInBox.Dock = DockStyle.Fill;
         pnlSlotInBox.Margin = new Padding(8, 4, 0, 4);
         pnlSlotInBox.BackColor = Color.White;
-        pnlSlotInBox.Padding = new Padding(10, 8, 10, 6);
+        pnlSlotInBox.Padding = new Padding(8, 5, 8, 4);
 
-        txtSlotIn.Dock = DockStyle.Fill;
-        txtSlotIn.BorderStyle = BorderStyle.None;
-        txtSlotIn.Font = new Font("Segoe UI", 9.8F, FontStyle.Bold);
-        txtSlotIn.Text = "A-03 (Trống)";
-        pnlSlotInBox.Controls.Add(txtSlotIn);
+        cboSlotIn.Dock = DockStyle.Fill;
+        cboSlotIn.FlatStyle = FlatStyle.Flat;
+        cboSlotIn.DropDownStyle = ComboBoxStyle.DropDownList;
+        cboSlotIn.Font = new Font("Consolas", 9.8F, FontStyle.Bold);
+        pnlSlotInBox.Controls.Add(cboSlotIn);
 
         tlpInputsIn.Controls.Add(lblPlateIn, 0, 0);
         tlpInputsIn.Controls.Add(lblVehicleTypeIn, 1, 0);
@@ -335,21 +331,19 @@ partial class CheckInOutForm
         lblPassStatusIn.Text = "Đối chiếu Vé tháng: Chưa nhập biển số";
         lblPassStatusIn.Font = new Font("Segoe UI", 8.8F, FontStyle.Bold);
         lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
-        lblPassStatusIn.Dock = DockStyle.Left;
-        lblPassStatusIn.AutoSize = false;
-        lblPassStatusIn.Width = 265;
+        lblPassStatusIn.Dock = DockStyle.Fill;
         lblPassStatusIn.TextAlign = ContentAlignment.MiddleLeft;
 
-        lblPassTestHint.Text = "Test mã: 51H-999.99";
+        lblPassTestHint.Text = "Kiểm tra từ CSDL";
         lblPassTestHint.Font = new Font("Consolas", 8.5F, FontStyle.Bold);
         lblPassTestHint.ForeColor = Color.FromArgb(71, 85, 105);
         lblPassTestHint.Dock = DockStyle.Right;
         lblPassTestHint.AutoSize = false;
-        lblPassTestHint.Width = 145;
+        lblPassTestHint.Width = 135;
         lblPassTestHint.TextAlign = ContentAlignment.MiddleRight;
 
-        pnlPassStatusBanner.Controls.Add(lblPassTestHint);
         pnlPassStatusBanner.Controls.Add(lblPassStatusIn);
+        pnlPassStatusBanner.Controls.Add(lblPassTestHint);
 
         // Nút Lưu Xe Vào & Xóa trắng
         btnSubmitCheckIn.Text = "[F1] Cho Xe Vào Bãi & Lưu CSDL";

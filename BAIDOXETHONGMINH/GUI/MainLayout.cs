@@ -48,13 +48,28 @@ public partial class MainLayout : Form
     {
         if (_currentRightForm != null)
         {
+            if (_currentRightForm is CheckInOutForm oldCheckInForm)
+            {
+                oldCheckInForm.SlotCapacityChanged -= OnSlotCapacityChanged;
+            }
+
             _currentRightForm.Close();
             _currentRightForm.Dispose();
             _currentRightForm = null;
         }
 
+        if (childForm is CheckInOutForm newCheckInForm)
+        {
+            newCheckInForm.SlotCapacityChanged += OnSlotCapacityChanged;
+        }
+
         _currentRightForm = childForm;
         EmbedFormIntoPanel(childForm, pnlRightContent);
+    }
+
+    private void OnSlotCapacityChanged(int availableSlots, int totalSlots)
+    {
+        _menuForm.UpdateSlotCapacity(availableSlots, totalSlots);
     }
 
     /// <summary>

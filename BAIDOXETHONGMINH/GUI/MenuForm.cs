@@ -72,6 +72,14 @@ public partial class MenuForm : Form
         MenuItemSelected?.Invoke(menuKey);
     }
 
+    /// <summary>
+    /// Cập nhật số chỗ trống hiển thị trên thẻ Ca làm việc ở Sidebar
+    /// </summary>
+    public void UpdateSlotCapacity(int availableSlots, int totalSlots)
+    {
+        lblShiftSlots.Text = $"Chỗ trống: {availableSlots} / {totalSlots} ô";
+    }
+
     private void HighlightButton(Button clickedButton)
     {
         if (_activeButton != null)

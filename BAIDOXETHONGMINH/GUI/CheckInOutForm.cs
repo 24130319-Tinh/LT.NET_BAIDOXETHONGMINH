@@ -1,5 +1,7 @@
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
+using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.Services;
 
 namespace BAIDOXETHONGMINH.GUI;
 
@@ -8,7 +10,11 @@ namespace BAIDOXETHONGMINH.GUI;
 /// </summary>
 public partial class CheckInOutForm : Form
 {
+    private readonly ParkingService _parkingService = new ParkingService();
+    private bool _isLoadingCheckInData = false;
     private decimal _currentBaseFee = 0m;
+
+    public event Action<int, int>? SlotCapacityChanged;
 
     [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
     private static extern IntPtr CreateRoundRectRgn(
@@ -21,7 +27,67 @@ public partial class CheckInOutForm : Form
     {
         InitializeComponent();
         SetupAllRoundedRectangles();
+        Load += CheckInOutForm_Load;
         cboSearchSession.SelectedIndex = 0;
+    }
+
+    private void CheckInOutForm_Load(object? sender, EventArgs e)
+    {
+        _parkingService.EnsureCatalogForTesting();
+        LoadCheckInCatalogData();
+    }
+
+    private void LoadCheckInCatalogData()
+    {
+        string? previousVehicleTypeId = cboVehicleTypeIn.SelectedValue?.ToString();
+
+        _isLoadingCheckInData = true;
+        try
+        {
+            List<VehicleType> vehicleTypes = _parkingService.GetVehicleTypes();
+            cboVehicleTypeIn.DisplayMember = nameof(VehicleType.TypeName);
+            cboVehicleTypeIn.ValueMember = nameof(VehicleType.VehicleTypeId);
+            cboVehicleTypeIn.DataSource = vehicleTypes;
+
+            if (!string.IsNullOrEmpty(previousVehicleTypeId))
+            {
+                cboVehicleTypeIn.SelectedValue = previousVehicleTypeId;
+            }
+
+            if (cboVehicleTypeIn.SelectedIndex < 0 && vehicleTypes.Count > 0)
+            {
+                cboVehicleTypeIn.SelectedIndex = 0;
+            }
+
+            List<ParkingCard> availableCards = _parkingService.GetAvailableCards();
+            cboCardIn.DisplayMember = nameof(ParkingCard.CardCode);
+            cboCardIn.ValueMember = nameof(ParkingCard.CardCode);
+            cboCardIn.DataSource = availableCards;
+        }
+        finally
+        {
+            _isLoadingCheckInData = false;
+        }
+
+        LoadAvailableSlotsForSelectedVehicleType();
+        NotifySlotCapacityChanged();
+    }
+
+    private void LoadAvailableSlotsForSelectedVehicleType()
+    {
+        VehicleType? selectedType = cboVehicleTypeIn.SelectedItem as VehicleType;
+        string vehicleTypeId = selectedType?.VehicleTypeId ?? "XEMAY";
+
+        List<ParkingSlot> availableSlots = _parkingService.GetAvailableSlots(vehicleTypeId);
+        cboSlotIn.DisplayMember = nameof(ParkingSlot.SlotCode);
+        cboSlotIn.ValueMember = nameof(ParkingSlot.SlotCode);
+        cboSlotIn.DataSource = availableSlots;
+    }
+
+    private void NotifySlotCapacityChanged()
+    {
+        (int AvailableSlots, int TotalSlots) summary = _parkingService.GetSlotCapacitySummary();
+        SlotCapacityChanged?.Invoke(summary.AvailableSlots, summary.TotalSlots);
     }
 
     /// <summary>
@@ -157,44 +223,70 @@ public partial class CheckInOutForm : Form
 
     private void BtnBrowseImage_Click(object? sender, EventArgs e)
     {
-        using var dialog = new OpenFileDialog
+        using OpenFileDialog dialog = new OpenFileDialog
         {
             Title = "Chọn hình ảnh phương tiện lúc vào bãi",
             Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp"
         };
 
-        if (dialog.ShowDialog() == DialogResult.OK)
+        if (dialog.ShowDialog() != DialogResult.OK)
         {
+            return;
+        }
+
+        try
+        {
+            byte[] imageBytes = File.ReadAllBytes(dialog.FileName);
+            using MemoryStream stream = new MemoryStream(imageBytes);
+            using Image tempImage = Image.FromStream(stream);
+
             txtImagePathIn.Text = dialog.FileName;
             picVehicleIn.Image?.Dispose();
-            picVehicleIn.Image = Image.FromFile(dialog.FileName);
+            picVehicleIn.Image = new Bitmap(tempImage);
             picVehicleIn.Invalidate();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Không thể đọc tệp hình ảnh: {ex.Message}", "Lỗi đọc ảnh", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private void TxtPlateIn_TextChanged(object? sender, EventArgs e)
     {
-        string plate = txtPlateIn.Text.Trim().ToUpperInvariant();
-        if (string.IsNullOrEmpty(plate))
+        string rawPlate = txtPlateIn.Text.Trim();
+        if (string.IsNullOrEmpty(rawPlate))
         {
             lblPassStatusIn.Text = "Đối chiếu Vé tháng: Chưa nhập biển số";
             lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
+            return;
         }
-        else if (plate == "51H-999.99" || plate == "59P2-345.67")
+
+        MonthlyPass? activePass = _parkingService.GetActiveMonthlyPass(rawPlate);
+        if (activePass != null)
         {
-            lblPassStatusIn.Text = "Đối chiếu Vé tháng: ★ Vé Tháng Hợp Lệ";
+            lblPassStatusIn.Text = $"★ Khách Vé Tháng (Miễn phí lượt) - HSD: {activePass.EndDate:dd/MM/yyyy}";
             lblPassStatusIn.ForeColor = Color.FromArgb(5, 150, 105);
+
+            string? currentTypeId = cboVehicleTypeIn.SelectedValue?.ToString();
+            if (!string.Equals(currentTypeId, activePass.VehicleTypeId, StringComparison.OrdinalIgnoreCase))
+            {
+                cboVehicleTypeIn.SelectedValue = activePass.VehicleTypeId;
+            }
+            return;
         }
-        else
-        {
-            lblPassStatusIn.Text = "Đối chiếu Vé tháng: Khách gửi Vé lượt";
-            lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
-        }
+
+        lblPassStatusIn.Text = "Đối chiếu Vé tháng: Khách gửi Vé lượt";
+        lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
     }
 
     private void CboVehicleTypeIn_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        txtSlotIn.Text = cboVehicleTypeIn.SelectedIndex == 0 ? "A-03 (Trống)" : "B-03 (Trống)";
+        if (_isLoadingCheckInData)
+        {
+            return;
+        }
+
+        LoadAvailableSlotsForSelectedVehicleType();
     }
 
     private void BtnResetCheckIn_Click(object? sender, EventArgs e)
@@ -208,19 +300,57 @@ public partial class CheckInOutForm : Form
 
     private void BtnSubmitCheckIn_Click(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(txtPlateIn.Text))
+        string licensePlate = txtPlateIn.Text.Trim();
+        if (string.IsNullOrWhiteSpace(licensePlate))
         {
             MessageBox.Show("Vui lòng nhập Biển số xe thủ công trước khi lưu!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             txtPlateIn.Focus();
             return;
         }
 
-        MessageBox.Show(
-            $"Đã lưu xe biển số {txtPlateIn.Text.Trim().ToUpperInvariant()} vào vị trí {txtSlotIn.Text} thành công!",
-            "Cho xe vào bãi",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information
+        VehicleType? selectedVehicleType = cboVehicleTypeIn.SelectedItem as VehicleType;
+        if (selectedVehicleType == null)
+        {
+            MessageBox.Show("Chưa có Loại phương tiện hợp lệ!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        ParkingCard? selectedCard = cboCardIn.SelectedItem as ParkingCard;
+        if (selectedCard == null)
+        {
+            MessageBox.Show("Hiện không còn Thẻ từ nào trống để cấp!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        ParkingSlot? selectedSlot = cboSlotIn.SelectedItem as ParkingSlot;
+        if (selectedSlot == null)
+        {
+            MessageBox.Show("Khu vực của loại xe này hiện đã hết Ô đỗ trống!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        string? imagePath = string.IsNullOrWhiteSpace(txtImagePathIn.Text) ? null : txtImagePathIn.Text.Trim();
+        (bool IsSuccess, string Message) result = _parkingService.CheckInVehicle(
+            licensePlate,
+            selectedVehicleType.VehicleTypeId,
+            selectedCard.CardCode,
+            selectedSlot.SlotCode,
+            imagePath
         );
+
+        MessageBox.Show(
+            result.Message,
+            result.IsSuccess ? "Cho xe vào bãi" : "Không thể cho xe vào bãi",
+            MessageBoxButtons.OK,
+            result.IsSuccess ? MessageBoxIcon.Information : MessageBoxIcon.Warning
+        );
+
+        if (result.IsSuccess)
+        {
+            BtnResetCheckIn_Click(sender, e);
+            LoadCheckInCatalogData();
+            txtPlateIn.Focus();
+        }
     }
 
     private void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
