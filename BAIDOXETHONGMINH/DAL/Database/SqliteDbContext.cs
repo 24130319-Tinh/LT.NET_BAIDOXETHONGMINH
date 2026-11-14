@@ -12,9 +12,12 @@ public static class SqliteDbContext
     /// </summary>
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
 
+    
+
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";
 
     private static string ResolveDatabasePath()
+    
     {
         // Ưu tiên trỏ trực tiếp tới file DAL/Database/smart_parking.db trong thư mục Project khi chạy Debug/Release
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -63,10 +66,14 @@ public static class SqliteDbContext
     /// </summary>
     public static void InitializeDatabase()
     {
-        using SqliteConnection connection = GetConnection();
-        using SqliteCommand cmd = connection.CreateCommand();
-        cmd.CommandText = GetSchemaSql();
-        cmd.ExecuteNonQuery();
+        using (SqliteConnection connection = GetConnection())
+        {
+            using SqliteCommand cmd = connection.CreateCommand();
+            cmd.CommandText = GetSchemaSql();
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSeedHelper.ResetAndSeedDatabase();
     }
 
     private static string GetSchemaSql()

@@ -1,5 +1,6 @@
 using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services;
 
@@ -9,15 +10,24 @@ namespace BAIDOXETHONGMINH.Services;
 public class ParkingService
 {
     private readonly ParkingRepository _parkingRepository;
+    private readonly FeeCalculationService _feeCalculationService;
 
     public ParkingService()
     {
         _parkingRepository = new ParkingRepository();
+        _feeCalculationService = new FeeCalculationService();
     }
 
     public ParkingService(ParkingRepository parkingRepository)
     {
         _parkingRepository = parkingRepository;
+        _feeCalculationService = new FeeCalculationService();
+    }
+
+    public ParkingService(ParkingRepository parkingRepository, FeeCalculationService feeCalculationService)
+    {
+        _parkingRepository = parkingRepository;
+        _feeCalculationService = feeCalculationService;
     }
 
     /// <summary>
@@ -191,6 +201,180 @@ public class ParkingService
 
         File.Copy(sourceImagePath, destFullPath, true);
         return destFullPath;
+    }
+
+    /// <summary>
+    /// Lấy danh sách tất cả lượt xe đang gửi trong bãi (Status = 'Parking')
+    /// </summary>
+    public List<ParkingSession> GetActiveParkingSessions()
+    {
+        return _parkingRepository.GetAllActiveParkingSessions();
+    }
+
+    /// <summary>
+    /// Lấy danh sách các mô hình xem trước (CheckOutPreviewModel) của toàn bộ xe đang trong bãi
+    /// để hiển thị trực tiếp lên ComboBox tìm kiếm ở Làn Ra.
+    /// </summary>
+    public List<CheckOutPreviewModel> GetActiveCheckOutPreviews(bool isLostCard = false)
+    {
+        List<ParkingSession> activeSessions = _parkingRepository.GetAllActiveParkingSessions();
+        List<CheckOutPreviewModel> previews = new List<CheckOutPreviewModel>();
+
+        foreach (ParkingSession session in activeSessions)
+        {
+            CheckOutPreviewModel preview = BuildCheckOutPreview(session, isLostCard);
+            previews.Add(preview);
+        }
+
+        return previews;
+    }
+
+    /// <summary>
+    /// Tra cứu thông tin xe lúc vào và tự động tính toán chi tiết số tiền cần thu ở Làn Ra
+    /// theo Mã thẻ hoặc Biển số xe.
+    /// </summary>
+    public CheckOutPreviewModel? PreviewCheckOut(string cardOrPlate, bool isLostCard)
+    {
+        if (string.IsNullOrWhiteSpace(cardOrPlate))
+        {
+            return null;
+        }
+
+        ParkingSession? activeSession = _parkingRepository.GetActiveSessionByCardOrPlate(cardOrPlate.Trim());
+        if (activeSession == null)
+        {
+            return null;
+        }
+
+        return BuildCheckOutPreview(activeSession, isLostCard);
+    }
+
+    /// <summary>
+    /// Xác nhận thu tiền và cho xe ra bãi (Nghiệp vụ 2 - Check-out):
+    /// Kiểm tra hợp lệ (nếu tích mất thẻ bắt buộc phải nhập số CCCD biên bản),
+    /// lưu kết quả vào ParkingSessions, PaymentTransactions, IncidentReports và giải phóng Ô đỗ + Thẻ.
+    /// </summary>
+    public (bool IsSuccess, string Message) ConfirmCheckOut(
+        string cardOrPlate,
+        bool isLostCard,
+        string? customerIdentityCard = null,
+        string? customerName = null,
+        string? customerPhone = null,
+        string? incidentNote = null,
+        int checkOutUserId = 1)
+    {
+        if (string.IsNullOrWhiteSpace(cardOrPlate))
+        {
+            return (false, "Vui lòng chọn hoặc nhập Mã thẻ / Biển số xe cần làm thủ tục ra bãi!");
+        }
+
+        ParkingSession? activeSession = _parkingRepository.GetActiveSessionByCardOrPlate(cardOrPlate.Trim());
+        if (activeSession == null)
+        {
+            return (false, "Không tìm thấy xe đang đỗ trong bãi khớp với Mã thẻ hoặc Biển số này!");
+        }
+
+        if (isLostCard && string.IsNullOrWhiteSpace(customerIdentityCard))
+        {
+            return (false, "Khách làm mất thẻ bắt buộc phải nhập số CCCD/CMND vào biên bản trước khi xác nhận cho xe ra!");
+        }
+
+        CheckOutPreviewModel preview = BuildCheckOutPreview(activeSession, isLostCard);
+
+        activeSession.CheckOutTime = preview.CheckOutTime;
+        activeSession.CheckOutUserId = checkOutUserId <= 0 ? 1 : checkOutUserId;
+        activeSession.IsMonthlyPass = preview.FeeResult.IsMonthlyPass;
+        activeSession.ParkingFee = preview.FeeResult.ParkingFee;
+        activeSession.PenaltyFee = preview.FeeResult.PenaltyFee;
+        activeSession.TotalAmount = preview.FeeResult.TotalAmount;
+        activeSession.Status = "Completed";
+
+        IncidentReport? incidentReport = null;
+        if (isLostCard)
+        {
+            string cleanedIdentityCard = customerIdentityCard!.Trim();
+            string cleanedCustomerName = string.IsNullOrWhiteSpace(customerName) ? "Khách gửi xe" : customerName.Trim();
+            string cleanedPhone = string.IsNullOrWhiteSpace(customerPhone) ? string.Empty : customerPhone.Trim();
+            string cleanedNote = string.IsNullOrWhiteSpace(incidentNote)
+                ? $"Báo mất thẻ {activeSession.CardCode} tại cổng ra (CCCD: {cleanedIdentityCard})"
+                : incidentNote.Trim();
+
+            incidentReport = new IncidentReport
+            {
+                SessionId = activeSession.SessionId,
+                CardCode = activeSession.CardCode,
+                LicensePlate = activeSession.LicensePlate,
+                CustomerName = cleanedCustomerName,
+                CustomerPhone = cleanedPhone,
+                CustomerIdentityCard = cleanedIdentityCard,
+                IncidentType = "LostCard",
+                CompensationFee = preview.FeeResult.PenaltyFee,
+                Note = cleanedNote,
+                HandledByUserId = checkOutUserId <= 0 ? 1 : checkOutUserId,
+                CreatedAt = preview.CheckOutTime
+            };
+        }
+
+        bool completed = _parkingRepository.CompleteCheckOutSession(
+            activeSession,
+            isLostCard,
+            incidentReport,
+            checkOutUserId
+        );
+
+        if (!completed)
+        {
+            return (false, "Không thể hoàn tất thủ tục trả xe trong CSDL. Vui lòng kiểm tra và thử lại!");
+        }
+
+        string cardStateMessage = isLostCard
+            ? $"Thẻ {activeSession.CardCode} đã chuyển sang trạng thái Mất ('Lost') & lưu biên bản."
+            : $"Thẻ {activeSession.CardCode} và Ô {activeSession.SlotCode} đã được giải phóng.";
+
+        return (
+            true,
+            $"Đã cho xe ra bãi thành công!\n\n" +
+            $"• Biển số: {activeSession.LicensePlate}  |  Ô đỗ: {activeSession.SlotCode}\n" +
+            $"• Thời gian đỗ: {preview.FeeResult.DurationText}\n" +
+            $"• Tiền gửi xe: {preview.FeeResult.ParkingFee:N0} VNĐ  |  Tiền phạt: {preview.FeeResult.PenaltyFee:N0} VNĐ\n" +
+            $"• TỔNG THU: {preview.FeeResult.TotalAmount:N0} VNĐ\n" +
+            $"• {cardStateMessage}"
+        );
+    }
+
+    private CheckOutPreviewModel BuildCheckOutPreview(ParkingSession session, bool isLostCard)
+    {
+        DateTime checkOutTime = DateTime.Now;
+        PricingRule? pricingRule = _parkingRepository.GetPricingRuleByVehicleType(session.VehicleTypeId);
+        MonthlyPass? activePass = _parkingRepository.GetActiveMonthlyPassByPlate(session.LicensePlate);
+
+        FeeCalculationResult feeResult = _feeCalculationService.CalculateFee(
+            session.CheckInTime,
+            checkOutTime,
+            session.VehicleTypeId,
+            pricingRule,
+            activePass,
+            isLostCard
+        );
+
+        bool isCar = string.Equals(session.VehicleTypeId.Trim(), "OTO", StringComparison.OrdinalIgnoreCase);
+        string vehicleTypeName = isCar ? "Ô tô" : "Xe máy";
+        string passShortLabel = feeResult.IsMonthlyPass ? "Vé tháng" : "Vé lượt";
+
+        return new CheckOutPreviewModel
+        {
+            SessionId = session.SessionId,
+            CardCode = session.CardCode,
+            LicensePlate = session.LicensePlate,
+            VehicleTypeId = session.VehicleTypeId,
+            VehicleTypeName = vehicleTypeName,
+            SlotCode = session.SlotCode,
+            CheckInTime = session.CheckInTime,
+            CheckOutTime = checkOutTime,
+            CheckInImagePath = session.CheckInImagePath,
+            DisplaySearchText = $"Mã thẻ: {session.CardCode} — Biển số {session.LicensePlate} ({vehicleTypeName} • Ô {session.SlotCode} • {passShortLabel})",
+            FeeResult = feeResult
+        };
     }
 
     /// <summary>

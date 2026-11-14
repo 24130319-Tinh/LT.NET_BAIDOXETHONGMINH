@@ -14,6 +14,8 @@ public class ParkingRepository
     /// Nạp danh mục nền tảng (User, Loại xe, Bảng giá, Khu A/B, 20 Ô đỗ, 20 Thẻ xe)
     /// nếu các bảng danh mục đang rỗng, giúp test độc lập Cổng Vào / Cổng Ra.
     /// </summary>
+    ///
+    // ham dung de xet xem vehicletype co dulieu trong khong? Neu trong thi nap vao du lieu mau, khác rỗng thì return
     public void SeedBaseCatalogIfEmpty()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -25,6 +27,9 @@ public class ParkingRepository
 
         if (existingCount > 0)
         {
+            using SqliteCommand syncPenaltyCmd = connection.CreateCommand();
+            syncPenaltyCmd.CommandText = "UPDATE PricingRules SET LostCardPenalty = 50000 WHERE LostCardPenalty <> 50000;";
+            syncPenaltyCmd.ExecuteNonQuery();
             return;
         }
 
@@ -58,7 +63,7 @@ public class ParkingRepository
                    (VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt)
                    VALUES
                    ('XEMAY', 5000, 10000, 3000, 150000, 50000, '{nowText}'),
-                   ('OTO', 30000, 60000, 20000, 1200000, 100000, '{nowText}');"
+                   ('OTO', 30000, 60000, 20000, 1200000, 50000, '{nowText}');"
             );
 
             // 4. Hai khu vực đỗ xe: Khu A (Xe máy - 12 ô) & Khu B (Ô tô - 8 ô)
@@ -228,9 +233,8 @@ public class ParkingRepository
         return (0, 0);
     }
 
-    /// <summary>
+    
     /// Kiểm tra xem biển số xe này có đang gửi trong bãi chưa lấy ra (Status = 'Parking') hay không
-    /// </summary>
     public bool IsLicensePlateCurrentlyParked(string licensePlate)
     {
         string normalizedPlate = NormalizePlate(licensePlate);
@@ -412,6 +416,415 @@ public class ParkingRepository
         }
     }
 
+    /// <summary>
+    /// Lấy cấu hình bảng giá theo mã loại phương tiện (XEMAY, OTO) từ bảng PricingRules
+    /// </summary>
+    public PricingRule? GetPricingRuleByVehicleType(string vehicleTypeId)
+    {
+        if (string.IsNullOrWhiteSpace(vehicleTypeId))
+        {
+            return null;
+        }
+
+        using SqliteConnection connection = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT RuleId, VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt
+            FROM PricingRules
+            WHERE UPPER(VehicleTypeId) = UPPER(@VehicleTypeId)
+            LIMIT 1;";
+        cmd.Parameters.AddWithValue("@VehicleTypeId", vehicleTypeId.Trim());
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            PricingRule rule = new PricingRule
+            {
+                RuleId = reader.GetInt32(0),
+                VehicleTypeId = reader.GetString(1),
+                DayTurnPrice = reader.GetDecimal(2),
+                OvernightPrice = reader.GetDecimal(3),
+                HourlyPrice = reader.GetDecimal(4),
+                MonthlyPassPrice = reader.GetDecimal(5),
+                LostCardPenalty = reader.GetDecimal(6),
+                UpdatedAt = reader.IsDBNull(7) ? DateTime.Now : ParseSqliteDateTime(reader.GetString(7))
+            };
+            return rule;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Lấy danh sách toàn bộ lượt xe đang gửi trong bãi (Status = 'Parking') để đổ lên thanh tìm kiếm Làn Ra
+    /// </summary>
+    public List<ParkingSession> GetAllActiveParkingSessions()
+    {
+        List<ParkingSession> sessions = new List<ParkingSession>();
+
+        using SqliteConnection connection = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT
+                SessionId,
+                CardCode,
+                LicensePlate,
+                VehicleTypeId,
+                SlotCode,
+                CheckInTime,
+                CheckOutTime,
+                CheckInImagePath,
+                CheckOutImagePath,
+                CheckInUserId,
+                CheckOutUserId,
+                IsMonthlyPass,
+                ParkingFee,
+                PenaltyFee,
+                TotalAmount,
+                Status
+            FROM ParkingSessions
+            WHERE Status = 'Parking'
+            ORDER BY CheckInTime DESC, SessionId DESC;";
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            ParkingSession session = MapParkingSession(reader);
+            sessions.Add(session);
+        }
+
+        return sessions;
+    }
+
+    /// <summary>
+    /// Tìm chính xác lượt gửi đang hoạt động (Status = 'Parking') theo Mã thẻ hoặc Biển số xe
+    /// </summary>
+    public ParkingSession? GetActiveSessionByCardOrPlate(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return null;
+        }
+
+        string rawKeyword = keyword.Trim().ToUpperInvariant();
+        string normalizedKeyword = NormalizePlate(keyword);
+
+        using SqliteConnection connection = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT
+                SessionId,
+                CardCode,
+                LicensePlate,
+                VehicleTypeId,
+                SlotCode,
+                CheckInTime,
+                CheckOutTime,
+                CheckInImagePath,
+                CheckOutImagePath,
+                CheckInUserId,
+                CheckOutUserId,
+                IsMonthlyPass,
+                ParkingFee,
+                PenaltyFee,
+                TotalAmount,
+                Status
+            FROM ParkingSessions
+            WHERE Status = 'Parking'
+              AND (
+                  UPPER(CardCode) = @RawKeyword
+                  OR UPPER(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', '')) = @NormalizedKeyword
+              )
+            ORDER BY CheckInTime DESC, SessionId DESC
+            LIMIT 1;";
+
+        cmd.Parameters.AddWithValue("@RawKeyword", rawKeyword);
+        cmd.Parameters.AddWithValue("@NormalizedKeyword", normalizedKeyword);
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapParkingSession(reader);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Hoàn tất thủ tục Xe Ra Bãi (Nghiệp vụ 2 - Check-out) trong 1 Transaction:
+    /// 1. UPDATE ParkingSessions sang 'Completed' cùng số tiền thu
+    /// 2. Giải phóng ô đỗ về 'Available'
+    /// 3. Giải phóng thẻ về 'Available' (hoặc khóa 'Lost' + lưu IncidentReports nếu mất thẻ)
+    /// 4. Lưu hóa đơn thu tiền vào PaymentTransactions và cập nhật doanh thu ca trực (nếu có ca đang mở)
+    /// </summary>
+    public bool CompleteCheckOutSession(
+        ParkingSession completedSession,
+        bool isLostCard,
+        IncidentReport? incidentReport,
+        int checkOutUserId = 1)
+    {
+        using SqliteConnection connection = SqliteDbContext.GetConnection();
+        using SqliteTransaction transaction = connection.BeginTransaction();
+
+        try
+        {
+            int safeUserId = checkOutUserId <= 0 ? 1 : checkOutUserId;
+            DateTime checkOutTime = completedSession.CheckOutTime ?? DateTime.Now;
+            string checkOutTimeText = checkOutTime.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // Bước 1: Cập nhật lượt gửi trong ParkingSessions sang 'Completed'
+            using SqliteCommand updateSessionCmd = connection.CreateCommand();
+            updateSessionCmd.Transaction = transaction;
+            updateSessionCmd.CommandText = @"
+                UPDATE ParkingSessions
+                SET CheckOutTime = @CheckOutTime,
+                    CheckOutImagePath = @CheckOutImagePath,
+                    CheckOutUserId = @CheckOutUserId,
+                    IsMonthlyPass = @IsMonthlyPass,
+                    ParkingFee = @ParkingFee,
+                    PenaltyFee = @PenaltyFee,
+                    TotalAmount = @TotalAmount,
+                    Status = 'Completed'
+                WHERE SessionId = @SessionId
+                  AND Status = 'Parking';";
+
+            updateSessionCmd.Parameters.AddWithValue("@CheckOutTime", checkOutTimeText);
+            updateSessionCmd.Parameters.AddWithValue("@CheckOutImagePath", (object?)completedSession.CheckOutImagePath ?? DBNull.Value);
+            updateSessionCmd.Parameters.AddWithValue("@CheckOutUserId", safeUserId);
+            updateSessionCmd.Parameters.AddWithValue("@IsMonthlyPass", completedSession.IsMonthlyPass ? 1 : 0);
+            updateSessionCmd.Parameters.AddWithValue("@ParkingFee", completedSession.ParkingFee);
+            updateSessionCmd.Parameters.AddWithValue("@PenaltyFee", completedSession.PenaltyFee);
+            updateSessionCmd.Parameters.AddWithValue("@TotalAmount", completedSession.TotalAmount);
+            updateSessionCmd.Parameters.AddWithValue("@SessionId", completedSession.SessionId);
+
+            int updatedSessionRows = updateSessionCmd.ExecuteNonQuery();
+            if (updatedSessionRows != 1)
+            {
+                transaction.Rollback();
+                return false;
+            }
+
+            // Bước 2: Giải phóng Ô đỗ về 'Available'
+            using SqliteCommand releaseSlotCmd = connection.CreateCommand();
+            releaseSlotCmd.Transaction = transaction;
+            releaseSlotCmd.CommandText = @"
+                UPDATE ParkingSlots
+                SET Status = 'Available',
+                    CurrentLicensePlate = NULL
+                WHERE SlotCode = @SlotCode;";
+            releaseSlotCmd.Parameters.AddWithValue("@SlotCode", completedSession.SlotCode);
+            releaseSlotCmd.ExecuteNonQuery();
+
+            // Bước 3: Giải phóng Thẻ xe hoặc khóa thẻ bị mất + lưu biên bản sự cố
+            string targetCardStatus = isLostCard ? "Lost" : "Available";
+            using SqliteCommand updateCardCmd = connection.CreateCommand();
+            updateCardCmd.Transaction = transaction;
+            updateCardCmd.CommandText = @"
+                UPDATE ParkingCards
+                SET Status = @TargetStatus,
+                    LicensePlate = NULL
+                WHERE CardCode = @CardCode;";
+            updateCardCmd.Parameters.AddWithValue("@TargetStatus", targetCardStatus);
+            updateCardCmd.Parameters.AddWithValue("@CardCode", completedSession.CardCode);
+            updateCardCmd.ExecuteNonQuery();
+
+            if (isLostCard && incidentReport != null)
+            {
+                using SqliteCommand insertIncidentCmd = connection.CreateCommand();
+                insertIncidentCmd.Transaction = transaction;
+                insertIncidentCmd.CommandText = @"
+                    INSERT INTO IncidentReports
+                    (
+                        SessionId,
+                        CardCode,
+                        LicensePlate,
+                        CustomerName,
+                        CustomerPhone,
+                        CustomerIdentityCard,
+                        IncidentType,
+                        CompensationFee,
+                        Note,
+                        HandledByUserId,
+                        CreatedAt
+                    )
+                    VALUES
+                    (
+                        @SessionId,
+                        @CardCode,
+                        @LicensePlate,
+                        @CustomerName,
+                        @CustomerPhone,
+                        @CustomerIdentityCard,
+                        @IncidentType,
+                        @CompensationFee,
+                        @Note,
+                        @HandledByUserId,
+                        @CreatedAt
+                    );";
+
+                insertIncidentCmd.Parameters.AddWithValue("@SessionId", completedSession.SessionId);
+                insertIncidentCmd.Parameters.AddWithValue("@CardCode", completedSession.CardCode);
+                insertIncidentCmd.Parameters.AddWithValue("@LicensePlate", completedSession.LicensePlate);
+                insertIncidentCmd.Parameters.AddWithValue("@CustomerName", incidentReport.CustomerName);
+                insertIncidentCmd.Parameters.AddWithValue("@CustomerPhone", incidentReport.CustomerPhone);
+                insertIncidentCmd.Parameters.AddWithValue("@CustomerIdentityCard", incidentReport.CustomerIdentityCard);
+                insertIncidentCmd.Parameters.AddWithValue("@IncidentType", string.IsNullOrWhiteSpace(incidentReport.IncidentType) ? "LostCard" : incidentReport.IncidentType);
+                insertIncidentCmd.Parameters.AddWithValue("@CompensationFee", incidentReport.CompensationFee);
+                insertIncidentCmd.Parameters.AddWithValue("@Note", (object?)incidentReport.Note ?? DBNull.Value);
+                insertIncidentCmd.Parameters.AddWithValue("@HandledByUserId", safeUserId);
+                insertIncidentCmd.Parameters.AddWithValue("@CreatedAt", checkOutTimeText);
+                insertIncidentCmd.ExecuteNonQuery();
+            }
+
+            // Bước 4: Ghi nhận hóa đơn thu tiền vào PaymentTransactions & cập nhật ca trực (nếu có)
+            int? openShiftId = GetOpenShiftId(connection, transaction);
+
+            if (completedSession.ParkingFee > 0m)
+            {
+                InsertPaymentTransaction(
+                    connection,
+                    transaction,
+                    "ParkingFee",
+                    completedSession.SessionId,
+                    completedSession.ParkingFee,
+                    safeUserId,
+                    openShiftId,
+                    $"Thu phí gửi xe {completedSession.LicensePlate} (Thẻ {completedSession.CardCode})",
+                    checkOutTimeText
+                );
+            }
+
+            if (completedSession.PenaltyFee > 0m)
+            {
+                InsertPaymentTransaction(
+                    connection,
+                    transaction,
+                    "LostCardPenalty",
+                    completedSession.SessionId,
+                    completedSession.PenaltyFee,
+                    safeUserId,
+                    openShiftId,
+                    $"Phạt mất thẻ {completedSession.CardCode} - BS: {completedSession.LicensePlate}",
+                    checkOutTimeText
+                );
+            }
+
+            if (openShiftId.HasValue)
+            {
+                using SqliteCommand updateShiftCmd = connection.CreateCommand();
+                updateShiftCmd.Transaction = transaction;
+                updateShiftCmd.CommandText = @"
+                    UPDATE WorkShifts
+                    SET TotalVehiclesOut = TotalVehiclesOut + 1,
+                        TotalRevenue = TotalRevenue + @TotalAmount
+                    WHERE ShiftId = @ShiftId;";
+                updateShiftCmd.Parameters.AddWithValue("@TotalAmount", completedSession.TotalAmount);
+                updateShiftCmd.Parameters.AddWithValue("@ShiftId", openShiftId.Value);
+                updateShiftCmd.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            return true;
+        }
+        catch (Exception)
+        {
+            transaction.Rollback();
+            return false;
+        }
+    }
+
+    private static ParkingSession MapParkingSession(SqliteDataReader reader)
+    {
+        ParkingSession session = new ParkingSession
+        {
+            SessionId = reader.GetInt32(0),
+            CardCode = reader.GetString(1),
+            LicensePlate = reader.GetString(2),
+            VehicleTypeId = reader.GetString(3),
+            SlotCode = reader.GetString(4),
+            CheckInTime = ParseSqliteDateTime(reader.GetString(5)),
+            CheckOutTime = reader.IsDBNull(6) ? null : ParseSqliteDateTime(reader.GetString(6)),
+            CheckInImagePath = reader.IsDBNull(7) ? null : reader.GetString(7),
+            CheckOutImagePath = reader.IsDBNull(8) ? null : reader.GetString(8),
+            CheckInUserId = reader.GetInt32(9),
+            CheckOutUserId = reader.IsDBNull(10) ? null : reader.GetInt32(10),
+            IsMonthlyPass = reader.GetInt32(11) == 1,
+            ParkingFee = reader.GetDecimal(12),
+            PenaltyFee = reader.GetDecimal(13),
+            TotalAmount = reader.GetDecimal(14),
+            Status = reader.GetString(15)
+        };
+        return session;
+    }
+
+    private static int? GetOpenShiftId(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.Transaction = transaction;
+        cmd.CommandText = @"
+            SELECT ShiftId
+            FROM WorkShifts
+            WHERE Status = 'Open'
+            ORDER BY ShiftId DESC
+            LIMIT 1;";
+
+        object? scalar = cmd.ExecuteScalar();
+        if (scalar == null || scalar == DBNull.Value)
+        {
+            return null;
+        }
+
+        return Convert.ToInt32(scalar);
+    }
+
+    private static void InsertPaymentTransaction(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string transactionType,
+        int referenceId,
+        decimal amount,
+        int collectedByUserId,
+        int? shiftId,
+        string note,
+        string createdAtText)
+    {
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.Transaction = transaction;
+        cmd.CommandText = @"
+            INSERT INTO PaymentTransactions
+            (
+                TransactionType,
+                ReferenceId,
+                Amount,
+                PaymentMethod,
+                CollectedByUserId,
+                ShiftId,
+                Note,
+                CreatedAt
+            )
+            VALUES
+            (
+                @TransactionType,
+                @ReferenceId,
+                @Amount,
+                'Cash',
+                @CollectedByUserId,
+                @ShiftId,
+                @Note,
+                @CreatedAt
+            );";
+
+        cmd.Parameters.AddWithValue("@TransactionType", transactionType);
+        cmd.Parameters.AddWithValue("@ReferenceId", referenceId);
+        cmd.Parameters.AddWithValue("@Amount", amount);
+        cmd.Parameters.AddWithValue("@CollectedByUserId", collectedByUserId);
+        cmd.Parameters.AddWithValue("@ShiftId", shiftId.HasValue ? (object)shiftId.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("@Note", note);
+        cmd.Parameters.AddWithValue("@CreatedAt", createdAtText);
+        cmd.ExecuteNonQuery();
+    }
+
+    //Ham lam cho bien số xe nhất quán và đẹp mắt hơn
     private static string NormalizePlate(string rawPlate)
     {
         if (string.IsNullOrWhiteSpace(rawPlate))
@@ -422,6 +835,7 @@ public class ParkingRepository
         return rawPlate.Trim().Replace(" ", string.Empty).Replace("-", string.Empty).ToUpperInvariant();
     }
 
+    //Ham chuyen doi string khi lay tu sqlite sang DateTime và kiểm tra null
     private static DateTime ParseSqliteDateTime(string rawDate)
     {
         if (DateTime.TryParse(rawDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed))

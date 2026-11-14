@@ -1,6 +1,7 @@
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.DTO.Models;
 using BAIDOXETHONGMINH.Services;
 
 namespace BAIDOXETHONGMINH.GUI;
@@ -12,7 +13,8 @@ public partial class CheckInOutForm : Form
 {
     private readonly ParkingService _parkingService = new ParkingService();
     private bool _isLoadingCheckInData = false;
-    private decimal _currentBaseFee = 0m;
+    private bool _isLoadingCheckOutData = false;
+    private CheckOutPreviewModel? _currentCheckOutPreview = null;
 
     public event Action<int, int>? SlotCapacityChanged;
 
@@ -28,13 +30,12 @@ public partial class CheckInOutForm : Form
         InitializeComponent();
         SetupAllRoundedRectangles();
         Load += CheckInOutForm_Load;
-        cboSearchSession.SelectedIndex = 0;
     }
 
     private void CheckInOutForm_Load(object? sender, EventArgs e)
     {
-        _parkingService.EnsureCatalogForTesting();
         LoadCheckInCatalogData();
+        LoadActiveSessionsForCheckOut();
     }
 
     private void LoadCheckInCatalogData()
@@ -147,19 +148,19 @@ public partial class CheckInOutForm : Form
         {
             if (control.Width <= 4 || control.Height <= 4) return;
 
-            var g = e.Graphics;
+            Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            var rect = new Rectangle(1, 1, control.Width - 3, control.Height - 3);
-            using var path = CreateRoundedRectanglePath(rect, radius / 2);
-            using var borderPen = new Pen(borderColor, 1.4f);
+            Rectangle rect = new Rectangle(1, 1, control.Width - 3, control.Height - 3);
+            using GraphicsPath path = CreateRoundedRectanglePath(rect, radius / 2);
+            using Pen borderPen = new Pen(borderColor, 1.4f);
             g.DrawPath(borderPen, path);
         };
     }
 
     private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
     {
-        var path = new GraphicsPath();
+        GraphicsPath path = new GraphicsPath();
         int d = Math.Max(2, radius * 2);
         if (d > rect.Width) d = rect.Width;
         if (d > rect.Height) d = rect.Height;
@@ -177,19 +178,19 @@ public partial class CheckInOutForm : Form
     /// </summary>
     private void PicVehicleIn_Paint(object? sender, PaintEventArgs e)
     {
-        var g = e.Graphics;
+        Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        var rect = new Rectangle(1, 1, picVehicleIn.Width - 3, picVehicleIn.Height - 3);
-        using var path = CreateRoundedRectanglePath(rect, 12);
+        Rectangle rect = new Rectangle(1, 1, picVehicleIn.Width - 3, picVehicleIn.Height - 3);
+        using GraphicsPath path = CreateRoundedRectanglePath(rect, 12);
 
         Color parentBg = picVehicleIn.Parent?.BackColor ?? Color.White;
-        using var outsideRegion = new Region(new Rectangle(0, 0, picVehicleIn.Width, picVehicleIn.Height));
+        using Region outsideRegion = new Region(new Rectangle(0, 0, picVehicleIn.Width, picVehicleIn.Height));
         outsideRegion.Exclude(path);
-        using var maskBrush = new SolidBrush(parentBg);
+        using SolidBrush maskBrush = new SolidBrush(parentBg);
         g.FillRegion(maskBrush, outsideRegion);
 
-        using var dashPen = new Pen(Color.FromArgb(148, 163, 184), 1.5f)
+        using Pen dashPen = new Pen(Color.FromArgb(148, 163, 184), 1.5f)
         {
             DashStyle = DashStyle.Dash
         };
@@ -200,8 +201,8 @@ public partial class CheckInOutForm : Form
         // Vẽ icon bức ảnh (khung bo tròn) ở giữa
         int cx = picVehicleIn.Width / 2;
         int cy = picVehicleIn.Height / 2 - 18;
-        using var iconPen = new Pen(Color.FromArgb(71, 85, 105), 2f);
-        using var iconPath = CreateRoundedRectanglePath(new Rectangle(cx - 22, cy - 16, 44, 32), 5);
+        using Pen iconPen = new Pen(Color.FromArgb(71, 85, 105), 2f);
+        using GraphicsPath iconPath = CreateRoundedRectanglePath(new Rectangle(cx - 22, cy - 16, 44, 32), 5);
         g.DrawPath(iconPen, iconPath);
         g.FillEllipse(Brushes.DimGray, cx - 12, cy - 8, 6, 6);
         g.DrawLines(iconPen, new[]
@@ -213,9 +214,9 @@ public partial class CheckInOutForm : Form
             new Point(cx + 18, cy + 12)
         });
 
-        using var titleFont = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-        using var subFont = new Font("Segoe UI", 8.5F, FontStyle.Regular);
-        var sf = new StringFormat { Alignment = StringAlignment.Center };
+        using Font titleFont = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+        using Font subFont = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+        StringFormat sf = new StringFormat { Alignment = StringAlignment.Center };
 
         g.DrawString("Khung hiển thị hình xe tải lên", titleFont, Brushes.Black, new RectangleF(0, cy + 22, picVehicleIn.Width, 22), sf);
         g.DrawString("Bấm \"Chọn hình từ máy...\" để mở hộp thoại chọn file ảnh", subFont, Brushes.DimGray, new RectangleF(0, cy + 42, picVehicleIn.Width, 22), sf);
@@ -349,75 +350,229 @@ public partial class CheckInOutForm : Form
         {
             BtnResetCheckIn_Click(sender, e);
             LoadCheckInCatalogData();
+            LoadActiveSessionsForCheckOut();
             txtPlateIn.Focus();
         }
     }
 
-    private void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
+    private void LoadActiveSessionsForCheckOut(string? preferredCardCode = null)
     {
-        chkLostCard.Checked = false;
-
-        switch (cboSearchSession.SelectedIndex)
+        _isLoadingCheckOutData = true;
+        try
         {
-            case 0:
-                lblOutCardVal.Text = "THE003";
-                lblOutPlateVal.Text = "51H-999.99";
-                lblSavedPlate.Text = "51H-999.99";
-                lblSavedFileName.Text = "oto_51H99999.jpg";
-                lblOutTypeSlotVal.Text = "Ô tô • Ô B-01";
-                lblOutDurationVal.Text = "1h 40p";
-                lblOutTicketTypeVal.Text = "★ Vé tháng (0đ)";
-                _currentBaseFee = 0m;
-                break;
+            List<CheckOutPreviewModel> activePreviews = _parkingService.GetActiveCheckOutPreviews(false);
+            cboSearchSession.DataSource = null;
+            cboSearchSession.DisplayMember = nameof(CheckOutPreviewModel.DisplaySearchText);
+            cboSearchSession.ValueMember = nameof(CheckOutPreviewModel.CardCode);
+            cboSearchSession.DataSource = activePreviews;
 
-            case 1:
-                lblOutCardVal.Text = "THE002";
-                lblOutPlateVal.Text = "51G-456.78";
-                lblSavedPlate.Text = "51G-456.78";
-                lblSavedFileName.Text = "oto_51G45678.jpg";
-                lblOutTypeSlotVal.Text = "Ô tô • Ô B-02";
-                lblOutDurationVal.Text = "3h 05p (Tính 4h)";
-                lblOutTicketTypeVal.Text = "Vé lượt (20k/h)";
-                _currentBaseFee = 80000m;
-                break;
+            if (!string.IsNullOrEmpty(preferredCardCode))
+            {
+                cboSearchSession.SelectedValue = preferredCardCode;
+            }
 
-            default:
-                lblOutCardVal.Text = "THE001";
-                lblOutPlateVal.Text = "59X3-112.23";
-                lblSavedPlate.Text = "59X3-112.23";
-                lblSavedFileName.Text = "xemay_59X3.jpg";
-                lblOutTypeSlotVal.Text = "Xe máy • Ô A-01";
-                lblOutDurationVal.Text = "2h 15p";
-                lblOutTicketTypeVal.Text = "Vé lượt ngày (5k)";
-                _currentBaseFee = 5000m;
-                break;
+            if (cboSearchSession.SelectedIndex < 0 && activePreviews.Count > 0)
+            {
+                cboSearchSession.SelectedIndex = 0;
+            }
+
+            chkLostCard.Checked = false;
+            txtLostCardCccd.Clear();
+            txtLostCardCccd.Enabled = false;
+            txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+        }
+        finally
+        {
+            _isLoadingCheckOutData = false;
         }
 
-        UpdateTotalOutFee();
+        RefreshSelectedCheckOutSession();
+    }
+
+    private void RefreshSelectedCheckOutSession()
+    {
+        CheckOutPreviewModel? selectedItem = cboSearchSession.SelectedItem as CheckOutPreviewModel;
+        if (selectedItem == null)
+        {
+            ClearCheckOutDisplay();
+            return;
+        }
+
+        CheckOutPreviewModel? latestPreview = _parkingService.PreviewCheckOut(
+            selectedItem.CardCode,
+            chkLostCard.Checked
+        );
+
+        DisplayCheckOutPreview(latestPreview ?? selectedItem);
+    }
+
+    private void DisplayCheckOutPreview(CheckOutPreviewModel preview)
+    {
+        _currentCheckOutPreview = preview;
+
+        lblSavedTimeIn.Text = $"Vào: {preview.CheckInTime:dd/MM/yyyy HH:mm:ss}";
+        lblSavedPlate.Text = preview.LicensePlate;
+        lblSavedFileName.Text = string.IsNullOrWhiteSpace(preview.CheckInImagePath)
+            ? "(Không có file ảnh)"
+            : Path.GetFileName(preview.CheckInImagePath);
+
+        LoadCheckOutVehicleImage(preview.CheckInImagePath);
+
+        lblOutCardVal.Text = preview.CardCode;
+        lblOutPlateVal.Text = preview.LicensePlate;
+        lblOutTypeSlotVal.Text = $"{preview.VehicleTypeName} • Ô {preview.SlotCode}";
+        lblOutDurationVal.Text = preview.FeeResult.DurationText;
+        lblOutTicketTypeVal.Text = preview.FeeResult.TicketTypeDisplay;
+        lblOutTicketTypeVal.ForeColor = preview.FeeResult.IsMonthlyPass
+            ? Color.FromArgb(5, 150, 105)
+            : Color.FromArgb(37, 99, 235);
+
+        lblFeeBreakdown.Text = $"Tiền gửi: {preview.FeeResult.ParkingFee:N0}đ + Phạt: {preview.FeeResult.PenaltyFee:N0}đ";
+        lblTotalAmount.Text = $"{preview.FeeResult.TotalAmount:N0} VNĐ";
+    }
+
+    private void LoadCheckOutVehicleImage(string? imagePath)
+    {
+        picVehicleOut.Image?.Dispose();
+        picVehicleOut.Image = null;
+
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+        {
+            picVehicleOut.Visible = false;
+            return;
+        }
+
+        try
+        {
+            byte[] imageBytes = File.ReadAllBytes(imagePath);
+            using MemoryStream stream = new MemoryStream(imageBytes);
+            using Image tempImage = Image.FromStream(stream);
+
+            picVehicleOut.Image = new Bitmap(tempImage);
+            picVehicleOut.Visible = true;
+            picVehicleOut.BringToFront();
+        }
+        catch (Exception)
+        {
+            picVehicleOut.Visible = false;
+        }
+    }
+
+    private void ClearCheckOutDisplay()
+    {
+        _currentCheckOutPreview = null;
+
+        picVehicleOut.Image?.Dispose();
+        picVehicleOut.Image = null;
+        picVehicleOut.Visible = false;
+
+        lblSavedTimeIn.Text = "Vào: —";
+        lblSavedFileName.Text = "Không có xe đang đỗ";
+        lblSavedPlate.Text = "—";
+
+        lblOutCardVal.Text = "—";
+        lblOutPlateVal.Text = "—";
+        lblOutTypeSlotVal.Text = "—";
+        lblOutDurationVal.Text = "—";
+        lblOutTicketTypeVal.Text = "—";
+        lblOutTicketTypeVal.ForeColor = Color.FromArgb(37, 99, 235);
+
+        lblFeeBreakdown.Text = "Tiền gửi: 0đ + Phạt: 0đ";
+        lblTotalAmount.Text = "0 VNĐ";
+    }
+
+    private void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (_isLoadingCheckOutData)
+        {
+            return;
+        }
+
+        _isLoadingCheckOutData = true;
+        try
+        {
+            chkLostCard.Checked = false;
+            txtLostCardCccd.Clear();
+            txtLostCardCccd.Enabled = false;
+            txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+        }
+        finally
+        {
+            _isLoadingCheckOutData = false;
+        }
+
+        RefreshSelectedCheckOutSession();
     }
 
     private void ChkLostCard_CheckedChanged(object? sender, EventArgs e)
     {
-        UpdateTotalOutFee();
-    }
+        bool isLostCard = chkLostCard.Checked;
+        txtLostCardCccd.Enabled = isLostCard;
+        txtLostCardCccd.BackColor = isLostCard ? Color.White : Color.FromArgb(241, 245, 249);
 
-    private void UpdateTotalOutFee()
-    {
-        decimal penalty = chkLostCard.Checked ? 50000m : 0m;
-        decimal total = _currentBaseFee + penalty;
+        if (!isLostCard)
+        {
+            txtLostCardCccd.Clear();
+        }
+        else if (!_isLoadingCheckOutData)
+        {
+            txtLostCardCccd.Focus();
+        }
 
-        lblFeeBreakdown.Text = $"Tiền gửi: {_currentBaseFee:N0}đ + Phạt: {penalty:N0}đ";
-        lblTotalAmount.Text = $"{total:N0} VNĐ";
+        if (_isLoadingCheckOutData)
+        {
+            return;
+        }
+
+        RefreshSelectedCheckOutSession();
     }
 
     private void BtnSubmitCheckOut_Click(object? sender, EventArgs e)
     {
-        MessageBox.Show(
-            $"Đã xác nhận thu {lblTotalAmount.Text} và giải phóng chỗ đỗ cho xe {lblOutPlateVal.Text}!",
-            "Cho xe ra bãi",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information
+        if (_currentCheckOutPreview == null)
+        {
+            MessageBox.Show(
+                "Hiện không có xe nào đang chọn ở Làn Ra để làm thủ tục trả xe!",
+                "Thông báo",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+            return;
+        }
+
+        bool isLostCard = chkLostCard.Checked;
+        string cccdText = txtLostCardCccd.Text.Trim();
+
+        if (isLostCard && string.IsNullOrWhiteSpace(cccdText))
+        {
+            MessageBox.Show(
+                "Khách làm mất thẻ bắt buộc phải nhập Số CCCD / Ghi chú biên bản trước khi xác nhận thu tiền!",
+                "Thiếu thông tin biên bản",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+            txtLostCardCccd.Focus();
+            return;
+        }
+
+        (bool IsSuccess, string Message) result = _parkingService.ConfirmCheckOut(
+            _currentCheckOutPreview.CardCode,
+            isLostCard,
+            isLostCard ? cccdText : null
         );
+
+        MessageBox.Show(
+            result.Message,
+            result.IsSuccess ? "Cho xe ra bãi" : "Không thể cho xe ra bãi",
+            MessageBoxButtons.OK,
+            result.IsSuccess ? MessageBoxIcon.Information : MessageBoxIcon.Warning
+        );
+
+        if (result.IsSuccess)
+        {
+            LoadCheckInCatalogData();
+            LoadActiveSessionsForCheckOut();
+        }
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -427,11 +582,21 @@ public partial class CheckInOutForm : Form
             BtnSubmitCheckIn_Click(this, EventArgs.Empty);
             return true;
         }
+
         if (keyData == Keys.F2)
         {
             BtnSubmitCheckOut_Click(this, EventArgs.Empty);
             return true;
         }
+
+        if (keyData == Keys.Escape)
+        {
+            BtnResetCheckIn_Click(this, EventArgs.Empty);
+            chkLostCard.Checked = false;
+            txtLostCardCccd.Clear();
+            return true;
+        }
+
         return base.ProcessCmdKey(ref msg, keyData);
     }
 }
