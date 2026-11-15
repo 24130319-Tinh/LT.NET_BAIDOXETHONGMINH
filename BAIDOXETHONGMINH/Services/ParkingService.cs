@@ -34,6 +34,101 @@ public class ParkingService
     public Task<List<ParkingVisit>> GetActiveVisitsAsync() =>
         SqliteHelper.QueryAsync(SelectVisits + " ORDER BY s.CheckInTime", Map);
 
+    private static string DatabaseDirectory =>
+        Path.GetDirectoryName(Path.GetFullPath(SqliteHelper.DatabasePath))!;
+
+    internal static string ResolveCheckInImagePath(string storedPath) =>
+        Path.GetFullPath(storedPath, DatabaseDirectory);
+
+    private static string CheckInImageDirectory()
+    {
+        var dbDirectory = new DirectoryInfo(DatabaseDirectory);
+        var assetRoot = dbDirectory.Name.Equals("Database", StringComparison.OrdinalIgnoreCase) &&
+            dbDirectory.Parent?.Name.Equals("DAL", StringComparison.OrdinalIgnoreCase) == true
+            ? dbDirectory.Parent.Parent?.FullName ?? dbDirectory.FullName
+            : dbDirectory.FullName;
+        return Path.Combine(assetRoot, "Assets", "CheckInImages");
+    }
+
+    public async Task CheckInAsync(string plate, string vehicleTypeId, string slotCode, string cardCode, string? imagePath)
+    {
+        plate = PlateHelper.Clean(plate);
+        if (PlateHelper.Key(plate).Length == 0) throw new ServiceException("Hãy nhập biển số xe hợp lệ.");
+        int user = AppService.CurrentUserId ?? throw new ServiceException("Chưa xác định nhân viên ghi nhận xe vào.");
+        var now = DateTime.Now;
+        var pass = await AppService.Monthly.FindValidPassAsync(plate);
+        bool monthly = pass?.VehicleTypeId == vehicleTypeId;
+
+        string? savedImagePath = null;
+        try
+        {
+            await SaveCheckInAsync();
+        }
+        catch
+        {
+            if (savedImagePath != null)
+            {
+                try { File.Delete(savedImagePath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            throw;
+        }
+
+        Task SaveCheckInAsync() => SqliteHelper.InTransactionAsync(async (connection, tx) =>
+        {
+            using var active = connection.CreateCommand();
+            active.Transaction = tx;
+            active.CommandText = """
+                SELECT LicensePlate FROM ParkingSessions WHERE Status='Parking' AND CheckOutTime IS NULL
+                """;
+            using (var reader = await active.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
+                    if (PlateHelper.Same(reader.GetString(0), plate))
+                        throw new ServiceException("Xe này đang có lượt gửi trong bãi.");
+
+            if (await SqliteHelper.ExecuteAsync(connection, tx, """
+                UPDATE ParkingSlots SET Status='Occupied', CurrentLicensePlate=@plate
+                WHERE SlotCode=@slot AND Status='Available'
+                  AND ZoneId IN (SELECT ZoneId FROM ParkingZones WHERE VehicleTypeId=@type)
+                  AND NOT EXISTS (SELECT 1 FROM ParkingSessions
+                      WHERE SlotCode=@slot AND Status='Parking' AND CheckOutTime IS NULL)
+                """, ("@slot", slotCode), ("@type", vehicleTypeId), ("@plate", plate)) != 1)
+                throw new ServiceException("Ô đỗ không còn trống hoặc không phù hợp với loại xe.");
+
+            if (await SqliteHelper.ExecuteAsync(connection, tx, """
+                UPDATE ParkingCards SET Status='InUse', LicensePlate=@plate
+                WHERE CardCode=@card AND Status='Available'
+                  AND NOT EXISTS (SELECT 1 FROM ParkingSessions
+                      WHERE CardCode=@card AND Status='Parking' AND CheckOutTime IS NULL)
+                """, ("@card", cardCode), ("@plate", plate)) != 1)
+                throw new ServiceException("Thẻ xe không còn trống. Hãy chọn thẻ khác.");
+
+            string? storedImagePath = null;
+            if (!string.IsNullOrWhiteSpace(imagePath))
+            {
+                string directory = CheckInImageDirectory();
+                Directory.CreateDirectory(directory);
+                savedImagePath = Path.Combine(directory, Guid.NewGuid().ToString("N") + Path.GetExtension(imagePath));
+                File.Copy(imagePath, savedImagePath);
+                storedImagePath = Path.GetRelativePath(DatabaseDirectory, savedImagePath);
+            }
+
+            await SqliteHelper.ExecuteAsync(connection, tx, """
+                INSERT INTO ParkingSessions (CardCode, LicensePlate, VehicleTypeId, SlotCode,
+                    CheckInTime, CheckInImagePath, CheckInUserId, IsMonthlyPass, Status)
+                VALUES (@card, @plate, @type, @slot, @time, @image, @user, @monthly, 'Parking')
+                """, ("@card", cardCode), ("@plate", plate), ("@type", vehicleTypeId), ("@slot", slotCode),
+                ("@time", now), ("@image", storedImagePath), ("@user", user), ("@monthly", monthly));
+
+            await SqliteHelper.ExecuteAsync(connection, tx, """
+                UPDATE WorkShifts SET TotalVehiclesIn=TotalVehiclesIn+1
+                WHERE ShiftId=(SELECT ShiftId FROM WorkShifts
+                    WHERE UserId=@user AND Status='Open' AND EndTime IS NULL ORDER BY StartTime DESC LIMIT 1)
+                """, ("@user", user));
+        });
+    }
+
     // Ô tô tính giờ, làm tròn lên; loại xe khác tính lượt ngày/qua đêm.
     // Mỗi khoảng 24 giờ là một lượt; phần lẻ có đi qua 22:00–06:00 tính giá đêm.
     public static decimal CalculateFee(DateTime entry, DateTime exit, bool monthly, PricingRule rule)

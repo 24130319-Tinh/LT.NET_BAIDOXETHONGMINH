@@ -288,9 +288,10 @@ partial class CheckInOutForm
         cboCardIn.Dock = DockStyle.Fill;
         cboCardIn.FlatStyle = FlatStyle.Flat;
         cboCardIn.DropDownStyle = ComboBoxStyle.DropDownList;
+        cboCardIn.MaxDropDownItems = 16;
+        cboCardIn.AutoCompleteSource = AutoCompleteSource.ListItems;
+        cboCardIn.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         cboCardIn.Font = new Font("Consolas", 9.8F);
-        cboCardIn.Items.AddRange(new object[] { "THE008 (Trống)", "THE009 (Trống)", "THE010 (Trống)" });
-        cboCardIn.SelectedIndex = 0;
         pnlCardInBox.Controls.Add(cboCardIn);
 
         pnlSlotInBox.Dock = DockStyle.Fill;
@@ -301,7 +302,8 @@ partial class CheckInOutForm
         txtSlotIn.Dock = DockStyle.Fill;
         txtSlotIn.BorderStyle = BorderStyle.None;
         txtSlotIn.Font = new Font("Segoe UI", 9.8F, FontStyle.Bold);
-        txtSlotIn.Text = "A-03 (Trống)";
+        txtSlotIn.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        txtSlotIn.AutoCompleteSource = AutoCompleteSource.CustomSource;
         pnlSlotInBox.Controls.Add(txtSlotIn);
 
         tlpInputsIn.Controls.Add(lblPlateIn, 0, 0);

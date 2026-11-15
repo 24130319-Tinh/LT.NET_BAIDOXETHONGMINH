@@ -13,6 +13,37 @@ public static class SqliteDbContext
             VALUES ('local', '', 'Nhân viên tại máy', '', 0);
             """);
     }
+    internal static Task SeedDefaultParkingMapAsync() =>
+        SqliteHelper.InTransactionAsync(async (connection, transaction) =>
+        {
+            int inserted = await SqliteHelper.ExecuteAsync(connection, transaction, """
+                INSERT OR IGNORE INTO AppSettings (SettingKey, SettingValue)
+                SELECT 'DefaultParkingMapInitialized', '1'
+                WHERE NOT EXISTS (SELECT 1 FROM ParkingZones)
+                  AND NOT EXISTS (SELECT 1 FROM ParkingSlots);
+                """);
+            if (inserted == 0) return;
+
+            await SqliteHelper.ExecuteAsync(connection, transaction, """
+                INSERT OR IGNORE INTO VehicleTypes (VehicleTypeId, TypeName)
+                VALUES ('XEMAY', 'Xe máy'), ('OTO', 'Ô tô');
+
+                INSERT INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity)
+                VALUES ('A', 'Khu A — Xe Máy', 'XEMAY', 12),
+                       ('B', 'Khu B — Ô Tô', 'OTO', 8);
+
+                WITH RECURSIVE SlotNumbers (Number) AS (
+                    VALUES (1)
+                    UNION ALL
+                    SELECT Number + 1 FROM SlotNumbers WHERE Number < 12
+                )
+                INSERT INTO ParkingSlots (SlotCode, ZoneId, Status)
+                SELECT ZoneId || printf('%02d', Number), ZoneId, 'Available'
+                FROM ParkingZones CROSS JOIN SlotNumbers
+                WHERE Number <= MaxCapacity;
+                """);
+        });
+
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
 
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";

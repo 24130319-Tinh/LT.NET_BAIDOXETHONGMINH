@@ -8,6 +8,9 @@ public partial class CheckInOutForm : Form
     private readonly ParkingService _parking = new();
     private CheckoutQuote? _quote;
     private bool _checkoutBusy;
+    private bool _checkInBusy;
+    private int _slotLoadVersion;
+    private string[] _availableSlots = [];
     private int _quoteVersion;
 
     [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
@@ -25,9 +28,27 @@ public partial class CheckInOutForm : Form
     cboSearchSession.AutoCompleteSource = AutoCompleteSource.ListItems;
 cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         ClearCheckout();
-        Disposed += (_, _) => pnlSavedPhotoInner.BackgroundImage?.Dispose();
+        var cardMenu = new ContextMenuStrip();
+        cardMenu.Items.Add("Quản lý thẻ xe", null, async (_, _) =>
+        {
+            using var form = new ParkingCardForm();
+            form.ShowDialog(this);
+            await Dialogs.RunAsync(LoadCardsAsync);
+        });
+        cboCardIn.ContextMenuStrip = cardMenu;
+        Disposed += (_, _) =>
+        {
+            cardMenu.Dispose();
+            picVehicleIn.Image?.Dispose();
+            pnlSavedPhotoInner.BackgroundImage?.Dispose();
+        };
         chkLostCard.Text = "Mất thẻ (phạt theo bảng giá, lập biên bản)";
-        Shown += async (_, _) => await Dialogs.RunAsync(LoadCheckoutAsync);
+        Shown += async (_, _) => await Dialogs.RunAsync(async () =>
+        {
+            await AppService.InitializeAsync();
+            await LoadCheckInAsync();
+            await LoadCheckoutAsync();
+        });
     }
 
     private void SetupAllRoundedRectangles()
@@ -157,14 +178,23 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
 
         if (dialog.ShowDialog() == DialogResult.OK)
         {
-            txtImagePathIn.Text = dialog.FileName;
-            picVehicleIn.Image?.Dispose();
-            picVehicleIn.Image = Image.FromFile(dialog.FileName);
-            picVehicleIn.Invalidate();
+            try
+            {
+                using var source = Image.FromFile(dialog.FileName);
+                var preview = new Bitmap(source);
+                picVehicleIn.Image?.Dispose();
+                picVehicleIn.Image = preview;
+                txtImagePathIn.Text = dialog.FileName;
+                picVehicleIn.Invalidate();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OutOfMemoryException)
+            {
+                MessageBox.Show(this, "Không đọc được ảnh đã chọn.", "Ảnh xe vào", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
     }
 
-    private void TxtPlateIn_TextChanged(object? sender, EventArgs e)
+    private async void TxtPlateIn_TextChanged(object? sender, EventArgs e)
     {
         string plate = txtPlateIn.Text.Trim().ToUpperInvariant();
         if (string.IsNullOrEmpty(plate))
@@ -172,21 +202,63 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             lblPassStatusIn.Text = "Đối chiếu Vé tháng: Chưa nhập biển số";
             lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
         }
-        else if (plate == "51H-999.99" || plate == "59P2-345.67")
-        {
-            lblPassStatusIn.Text = "Đối chiếu Vé tháng: ★ Vé Tháng Hợp Lệ";
-            lblPassStatusIn.ForeColor = Color.FromArgb(5, 150, 105);
-        }
         else
         {
-            lblPassStatusIn.Text = "Đối chiếu Vé tháng: Khách gửi Vé lượt";
+            lblPassStatusIn.Text = "Đối chiếu Vé tháng: Đang kiểm tra";
             lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
+            await Dialogs.RunAsync(async () =>
+            {
+                string type = VehicleTypeIn;
+                var pass = await AppService.Monthly.FindValidPassAsync(plate);
+                if (IsDisposed || plate != PlateHelper.Clean(txtPlateIn.Text) || type != VehicleTypeIn) return;
+                bool monthly = pass?.VehicleTypeId == type;
+                lblPassStatusIn.Text = monthly ? "Đối chiếu Vé tháng: Vé tháng hợp lệ" :
+                    "Đối chiếu Vé tháng: Khách gửi Vé lượt";
+                if (monthly) lblPassStatusIn.ForeColor = Color.FromArgb(5, 150, 105);
+            });
         }
     }
 
-    private void CboVehicleTypeIn_SelectedIndexChanged(object? sender, EventArgs e)
+    private string VehicleTypeIn => cboVehicleTypeIn.SelectedIndex == 0 ? "XEMAY" : "OTO";
+
+    private async void CboVehicleTypeIn_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        txtSlotIn.Text = cboVehicleTypeIn.SelectedIndex == 0 ? "A-03 (Trống)" : "B-03 (Trống)";
+        TxtPlateIn_TextChanged(sender, e);
+        await Dialogs.RunAsync(LoadSlotsAsync);
+    }
+
+    private async Task LoadSlotsAsync()
+    {
+        int version = ++_slotLoadVersion;
+        string type = VehicleTypeIn;
+        _availableSlots = [];
+        txtSlotIn.Clear();
+        txtSlotIn.AutoCompleteCustomSource.Clear();
+        var zones = await AppService.Map.GetMapAsync();
+        if (IsDisposed || version != _slotLoadVersion) return;
+        _availableSlots = zones.Where(zone => zone.Zone.VehicleTypeId == type)
+            .SelectMany(zone => zone.Slots)
+            .Where(slot => slot.Status == SlotStatus.Available)
+            .Select(slot => slot.SlotCode).ToArray();
+        txtSlotIn.AutoCompleteCustomSource.AddRange(_availableSlots);
+        txtSlotIn.Text = _availableSlots.FirstOrDefault() ?? "";
+    }
+
+    private async Task LoadCheckInAsync()
+    {
+        await LoadCardsAsync();
+        if (!IsDisposed) await LoadSlotsAsync();
+    }
+
+    private async Task LoadCardsAsync()
+    {
+        string? selected = cboCardIn.SelectedItem as string;
+        var cards = await AppService.Card.SearchAsync("");
+        if (IsDisposed) return;
+        var available = cards.Where(card => card.Status == CardStatus.Available)
+            .Select(card => card.CardCode).ToList();
+        cboCardIn.DataSource = available;
+        if (selected != null && available.Contains(selected)) cboCardIn.SelectedItem = selected;
     }
 
     private void BtnResetCheckIn_Click(object? sender, EventArgs e)
@@ -198,21 +270,38 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         picVehicleIn.Invalidate();
     }
 
-    private void BtnSubmitCheckIn_Click(object? sender, EventArgs e)
+    private async void BtnSubmitCheckIn_Click(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(txtPlateIn.Text))
+        if (_checkInBusy) return;
+        _checkInBusy = true;
+        btnSubmitCheckIn.Enabled = false;
+        try
         {
-            MessageBox.Show("Vui lòng nhập Biển số xe thủ công trước khi lưu!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            txtPlateIn.Focus();
-            return;
-        }
+            await Dialogs.RunAsync(async () =>
+            {
+                string plate = PlateHelper.Clean(txtPlateIn.Text);
+                if (PlateHelper.Key(plate).Length == 0)
+                    throw new ServiceException("Hãy nhập biển số xe hợp lệ.");
+                if (cboCardIn.SelectedItem is not string card)
+                    throw new ServiceException("Chưa có thẻ trống. Nhấp chuột phải vào ô mã thẻ để mở Quản lý thẻ xe.");
+                string slot = txtSlotIn.Text.Trim().ToUpperInvariant();
+                if (!_availableSlots.Contains(slot))
+                    throw new ServiceException("Hãy nhập mã ô đỗ còn trống của loại xe đã chọn.");
 
-        MessageBox.Show(
-            $"Đã lưu xe biển số {txtPlateIn.Text.Trim().ToUpperInvariant()} vào vị trí {txtSlotIn.Text} thành công!",
-            "Cho xe vào bãi",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information
-        );
+                await _parking.CheckInAsync(plate, VehicleTypeIn, slot, card,
+                    picVehicleIn.Image == null ? null : txtImagePathIn.Text);
+                if (IsDisposed) return;
+                BtnResetCheckIn_Click(sender, e);
+                MessageBox.Show(this, $"Đã lưu xe {plate} vào ô {slot}.", "Cho xe vào bãi");
+                await LoadCheckoutAsync();
+                await LoadCheckInAsync();
+            });
+        }
+        finally
+        {
+            _checkInBusy = false;
+            if (!IsDisposed) btnSubmitCheckIn.Enabled = true;
+        }
     }
 
     private async Task LoadCheckoutAsync()
@@ -257,13 +346,10 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             ClearCheckout();
             return;
         }
-        var quote = await _parking.GetQuoteAsync(visit.SessionId, chkLostCard.Checked);
-        if (version != _quoteVersion || IsDisposed) return;
-        _quote = quote;
         lblOutCardVal.Text = visit.CardCode;
         lblOutPlateVal.Text = visit.LicensePlate;
         lblOutTypeSlotVal.Text = $"{visit.TypeName} • {visit.SlotCode}";
-        var duration = quote.ExitTime - visit.CheckInTime;
+        var duration = DateTime.Now - visit.CheckInTime;
         lblOutDurationVal.Text = $"{(int)duration.TotalHours}h {duration.Minutes}p";
         lblOutTicketTypeVal.Text = visit.IsMonthlyPass ? "Vé tháng" : "Vé lượt";
         lblSavedTimeIn.Text = $"Vào: {visit.CheckInTime:dd/MM/yyyy HH:mm}";
@@ -271,20 +357,36 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         lblSavedPlate.Text = visit.LicensePlate;
         pnlSavedPhotoInner.BackgroundImage?.Dispose();
         pnlSavedPhotoInner.BackgroundImage = null;
-        if (!string.IsNullOrWhiteSpace(visit.ImagePath) && File.Exists(visit.ImagePath))
+        if (!string.IsNullOrWhiteSpace(visit.ImagePath))
         {
             try
             {
-                using var source = Image.FromFile(visit.ImagePath);
+                string savedPath = ParkingService.ResolveCheckInImagePath(visit.ImagePath);
+                if (!File.Exists(savedPath)) throw new FileNotFoundException();
+                using var source = Image.FromFile(savedPath);
                 pnlSavedPhotoInner.BackgroundImage = new Bitmap(source);
                 pnlSavedPhotoInner.BackgroundImageLayout = ImageLayout.Zoom;
                 lblSavedPlate.Text = "";
             }
-            catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OutOfMemoryException)
             {
                 lblSavedFileName.Text = "Không đọc được ảnh đã lưu";
             }
         }
+        lblTotalAmount.Text = "—";
+        lblFeeBreakdown.Text = "Đang tính phí";
+        CheckoutQuote quote;
+        try
+        {
+            quote = await _parking.GetQuoteAsync(visit.SessionId, chkLostCard.Checked);
+        }
+        catch (ServiceException ex)
+        {
+            if (version == _quoteVersion && !IsDisposed) lblFeeBreakdown.Text = ex.Message;
+            return;
+        }
+        if (version != _quoteVersion || IsDisposed) return;
+        _quote = quote;
         lblFeeBreakdown.Text = $"Tiền gửi: {Fmt.Money(quote.ParkingFee)} + Phạt: {Fmt.Money(quote.Penalty)}";
         lblTotalAmount.Text = Fmt.Vnd(quote.Total);
         btnSubmitCheckOut.Enabled = !_checkoutBusy;
@@ -323,6 +425,7 @@ cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                 chkLostCard.Checked = false;
                 MessageBox.Show(this, $"Đã lưu xe ra và thu {Fmt.Vnd(quote.Total)}.", "Hoàn tất");
                 await LoadCheckoutAsync();
+                await LoadCheckInAsync();
             });
         }
         finally
