@@ -23,6 +23,7 @@ partial class MenuForm
     private Label lblShiftSlots = null!;
     private PictureBox picAvatar = null!;
 
+    // Hàm giải phóng tài nguyên giao diện của MenuForm khi đóng
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -32,6 +33,7 @@ partial class MenuForm
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo và bố trí toàn bộ các thành phần giao diện trên thanh Menu trái
     private void InitializeComponent()
     {
         pnlSidebar = new Panel();
@@ -55,9 +57,6 @@ partial class MenuForm
 
         SuspendLayout();
 
-        // 
-        // pnlSidebar
-        // 
         pnlSidebar.BackColor = Color.FromArgb(24, 30, 44);
         pnlSidebar.Dock = DockStyle.Fill;
         pnlSidebar.Padding = new Padding(12);
@@ -65,9 +64,6 @@ partial class MenuForm
         pnlSidebar.Controls.Add(pnlLogo);
         pnlSidebar.Controls.Add(pnlShiftCard);
 
-        // 
-        // pnlLogo
-        // 
         pnlLogo.Dock = DockStyle.Top;
         pnlLogo.Height = 66;
 
@@ -86,9 +82,6 @@ partial class MenuForm
         pnlLogo.Controls.Add(lblAppName);
         pnlLogo.Controls.Add(lblAppSub);
 
-        // 
-        // flpMenu
-        // 
         flpMenu.Dock = DockStyle.Fill;
         flpMenu.FlowDirection = FlowDirection.TopDown;
         flpMenu.WrapContents = false;
@@ -127,9 +120,6 @@ partial class MenuForm
         flpMenu.Controls.Add(btnCustomer);
         flpMenu.Controls.Add(btnSearchReport);
 
-        // 
-        // pnlShiftCard (Thông tin Ca trực + Avatar bên phải)
-        // 
         pnlShiftCard.Dock = DockStyle.Bottom;
         pnlShiftCard.Height = 100;
         pnlShiftCard.BackColor = Color.FromArgb(30, 41, 59);
@@ -170,9 +160,6 @@ partial class MenuForm
         pnlShiftCard.Controls.Add(lblShiftSlots);
         pnlShiftCard.Controls.Add(picAvatar);
 
-        // 
-        // MenuForm
-        // 
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(260, 760);
         FormBorderStyle = FormBorderStyle.None;
@@ -181,6 +168,7 @@ partial class MenuForm
         ResumeLayout(false);
     }
 
+    // Hàm thiết lập kiểu dáng kích thước, màu sắc và phông chữ cho từng nút bấm trên Menu
     private static void ConfigureMenuButton(Button btn, string text, bool isSubItem)
     {
         btn.Text = text;

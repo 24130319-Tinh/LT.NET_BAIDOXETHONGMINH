@@ -7,6 +7,7 @@ partial class MainLayout
     private Panel pnlLeftMenu = null!;
     private Panel pnlRightContent = null!;
 
+    // Hàm giải phóng tài nguyên giao diện của MainLayout khi đóng ứng dụng
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -16,6 +17,7 @@ partial class MainLayout
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo hai khung Panel trái và phải cho cửa sổ chính MainLayout
     private void InitializeComponent()
     {
         pnlLeftMenu = new Panel();
@@ -23,22 +25,13 @@ partial class MainLayout
 
         SuspendLayout();
 
-        // 
-        // pnlLeftMenu (Khung chứa component MenuForm bên trái)
-        // 
         pnlLeftMenu.Dock = DockStyle.Left;
         pnlLeftMenu.Width = 260;
         pnlLeftMenu.BackColor = Color.FromArgb(24, 30, 44);
 
-        // 
-        // pnlRightContent (Khung chứa các Form chức năng bên phải như CheckInOutForm, ParkingMapForm...)
-        // 
         pnlRightContent.Dock = DockStyle.Fill;
         pnlRightContent.BackColor = Color.FromArgb(248, 250, 252);
 
-        // 
-        // MainLayout
-        // 
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 760);
         MinimumSize = new Size(1060, 680);

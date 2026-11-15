@@ -3,11 +3,9 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services.Strategies;
 
-/// <summary>
-/// Chiến lược 2: Tính phí cho Ô tô gửi Vé lượt (Tính theo giờ làm tròn lên + Phụ thu qua đêm)
-/// </summary>
 public class CarTurnFeeStrategy : IFeeCalculationStrategy
 {
+    // Hàm tính phí cho Ô tô gửi vé lượt (tính theo giờ làm tròn lên kết hợp phụ thu qua đêm)
     public FeeCalculationResult Calculate(
         DateTime checkInTime,
         DateTime checkOutTime,

@@ -5,17 +5,9 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Repositories;
 
-/// <summary>
-/// Tầng truy xuất dữ liệu SQLite cho Nghiệp vụ 1 (Check-in) & Nghiệp vụ 2 (Check-out)
-/// </summary>
 public class ParkingRepository
 {
-    /// <summary>
-    /// Nạp danh mục nền tảng (User, Loại xe, Bảng giá, Khu A/B, 20 Ô đỗ, 20 Thẻ xe)
-    /// nếu các bảng danh mục đang rỗng, giúp test độc lập Cổng Vào / Cổng Ra.
-    /// </summary>
-    ///
-    // ham dung de xet xem vehicletype co dulieu trong khong? Neu trong thi nap vao du lieu mau, khác rỗng thì return
+    // Hàm kiểm tra bảng VehicleTypes có rỗng không, nếu rỗng thì nạp danh mục mẫu, nếu đã có thì đồng bộ mức phạt 50.000đ
     public void SeedBaseCatalogIfEmpty()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -38,7 +30,6 @@ public class ParkingRepository
         {
             string nowText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            // 1. Tài khoản trực ca mặc định (UserId = 1)
             ExecuteNonQuery(
                 connection,
                 transaction,
@@ -46,7 +37,6 @@ public class ParkingRepository
                   VALUES ('admin', '123456', 'Admin Tính', '0901234567', 1);"
             );
 
-            // 2. Hai loại phương tiện cơ bản: XEMAY & OTO
             ExecuteNonQuery(
                 connection,
                 transaction,
@@ -55,7 +45,6 @@ public class ParkingRepository
                   ('OTO', 'Ô tô', 'Ô tô con 4 - 7 chỗ');"
             );
 
-            // 3. Bảng giá mặc định cho Xe máy & Ô tô
             ExecuteNonQuery(
                 connection,
                 transaction,
@@ -66,7 +55,6 @@ public class ParkingRepository
                    ('OTO', 30000, 60000, 20000, 1200000, 50000, '{nowText}');"
             );
 
-            // 4. Hai khu vực đỗ xe: Khu A (Xe máy - 12 ô) & Khu B (Ô tô - 8 ô)
             ExecuteNonQuery(
                 connection,
                 transaction,
@@ -75,7 +63,6 @@ public class ParkingRepository
                   ('ZONE_B', 'Khu B - Ô tô', 'OTO', 8);"
             );
 
-            // 5. 12 ô đỗ Khu A (A-01 .. A-12) và 8 ô đỗ Khu B (B-01 .. B-08)
             for (int i = 1; i <= 12; i++)
             {
                 string slotCode = $"A-{i:D2}";
@@ -96,7 +83,6 @@ public class ParkingRepository
                 );
             }
 
-            // 6. 20 thẻ xe (THE001 .. THE020)
             for (int i = 1; i <= 20; i++)
             {
                 string cardCode = $"THE{i:D3}";
@@ -116,9 +102,7 @@ public class ParkingRepository
         }
     }
 
-    /// <summary>
-    /// Lấy danh sách tất cả các loại phương tiện (VD: XEMAY, OTO)
-    /// </summary>
+    // Hàm lấy danh sách tất cả các loại phương tiện trong cơ sở dữ liệu
     public List<VehicleType> GetVehicleTypes()
     {
         List<VehicleType> vehicleTypes = new List<VehicleType>();
@@ -145,9 +129,7 @@ public class ParkingRepository
         return vehicleTypes;
     }
 
-    /// <summary>
-    /// Lấy danh sách các thẻ xe đang ở trạng thái sẵn sàng cấp phát (Status = 'Available')
-    /// </summary>
+    // Hàm lấy danh sách các thẻ xe đang ở trạng thái sẵn sàng cấp phát (Available)
     public List<ParkingCard> GetAvailableCards()
     {
         List<ParkingCard> availableCards = new List<ParkingCard>();
@@ -175,9 +157,7 @@ public class ParkingRepository
         return availableCards;
     }
 
-    /// <summary>
-    /// Lấy danh sách các ô đỗ còn trống (Status = 'Available') tương ứng với loại phương tiện
-    /// </summary>
+    // Hàm lấy danh sách các ô đỗ còn trống tương ứng với mã loại phương tiện
     public List<ParkingSlot> GetAvailableSlotsByVehicleType(string vehicleTypeId)
     {
         List<ParkingSlot> availableSlots = new List<ParkingSlot>();
@@ -209,9 +189,7 @@ public class ParkingRepository
         return availableSlots;
     }
 
-    /// <summary>
-    /// Đếm số lượng ô đỗ còn trống trên tổng số ô đỗ của toàn bãi xe
-    /// </summary>
+    // Hàm đếm số lượng ô đỗ còn trống trên tổng số ô đỗ của toàn bãi xe
     public (int AvailableSlots, int TotalSlots) GetSlotCapacitySummary()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -233,8 +211,7 @@ public class ParkingRepository
         return (0, 0);
     }
 
-    
-    /// Kiểm tra xem biển số xe này có đang gửi trong bãi chưa lấy ra (Status = 'Parking') hay không
+    // Hàm kiểm tra biển số xe hiện có đang gửi trong bãi chưa lấy ra hay không
     public bool IsLicensePlateCurrentlyParked(string licensePlate)
     {
         string normalizedPlate = NormalizePlate(licensePlate);
@@ -248,7 +225,7 @@ public class ParkingRepository
         cmd.CommandText = @"
             SELECT COUNT(*)
             FROM ParkingSessions
-            WHERE UPPER(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', '')) = @NormalizedPlate
+            WHERE UPPER(REPLACE(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', ''), '.', '')) = @NormalizedPlate
               AND Status = 'Parking';";
         cmd.Parameters.AddWithValue("@NormalizedPlate", normalizedPlate);
 
@@ -257,9 +234,7 @@ public class ParkingRepository
         return count > 0;
     }
 
-    /// <summary>
-    /// Tìm Vé tháng đang hoạt động (Status = 'Active') và còn thời hạn của biển số xe
-    /// </summary>
+    // Hàm tìm kiếm Vé tháng đang hoạt động và còn thời hạn theo biển số xe
     public MonthlyPass? GetActiveMonthlyPassByPlate(string licensePlate)
     {
         string normalizedPlate = NormalizePlate(licensePlate);
@@ -273,7 +248,7 @@ public class ParkingRepository
         cmd.CommandText = @"
             SELECT PassId, CustomerId, LicensePlate, VehicleTypeId, VehicleBrandColor, StartDate, EndDate, Status
             FROM MonthlyPasses
-            WHERE UPPER(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', '')) = @NormalizedPlate
+            WHERE UPPER(REPLACE(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', ''), '.', '')) = @NormalizedPlate
               AND Status = 'Active'
             ORDER BY EndDate DESC;";
         cmd.Parameters.AddWithValue("@NormalizedPlate", normalizedPlate);
@@ -306,13 +281,7 @@ public class ParkingRepository
         return null;
     }
 
-    /// <summary>
-    /// Lưu lượt xe vào bãi trong 1 Transaction đồng bộ 3 bảng:
-    /// 1. INSERT vào ParkingSessions (Status = 'Parking')
-    /// 2. UPDATE ParkingCards sang Status = 'InUse'
-    /// 3. UPDATE ParkingSlots sang Status = 'Occupied'
-    /// Trả về true nếu cả 3 bước thành công, ngược lại Rollback và trả về false.
-    /// </summary>
+    // Hàm lưu lượt xe vào bãi và đồng bộ trạng thái thẻ xe, ô đỗ, ca trực trong một Transaction
     public bool InsertCheckInSession(ParkingSession session)
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -320,7 +289,6 @@ public class ParkingRepository
 
         try
         {
-            // Bước 1: Thêm dòng mới vào bảng ParkingSessions
             using SqliteCommand insertSessionCmd = connection.CreateCommand();
             insertSessionCmd.Transaction = transaction;
             insertSessionCmd.CommandText = @"
@@ -372,7 +340,6 @@ public class ParkingRepository
 
             int insertedRows = insertSessionCmd.ExecuteNonQuery();
 
-            // Bước 2: Cập nhật trạng thái thẻ xe sang 'InUse'
             using SqliteCommand updateCardCmd = connection.CreateCommand();
             updateCardCmd.Transaction = transaction;
             updateCardCmd.CommandText = @"
@@ -380,13 +347,12 @@ public class ParkingRepository
                 SET Status = 'InUse',
                     LicensePlate = @LicensePlate
                 WHERE CardCode = @CardCode
-                  AND Status = 'Available';";
+                    AND Status = 'Available';";
             updateCardCmd.Parameters.AddWithValue("@LicensePlate", session.LicensePlate);
             updateCardCmd.Parameters.AddWithValue("@CardCode", session.CardCode);
 
             int updatedCards = updateCardCmd.ExecuteNonQuery();
 
-            // Bước 3: Cập nhật trạng thái ô đỗ sang 'Occupied'
             using SqliteCommand updateSlotCmd = connection.CreateCommand();
             updateSlotCmd.Transaction = transaction;
             updateSlotCmd.CommandText = @"
@@ -402,6 +368,19 @@ public class ParkingRepository
 
             if (insertedRows == 1 && updatedCards == 1 && updatedSlots == 1)
             {
+                int? openShiftId = GetOpenShiftId(connection, transaction);
+                if (openShiftId.HasValue)
+                {
+                    using SqliteCommand updateShiftCmd = connection.CreateCommand();
+                    updateShiftCmd.Transaction = transaction;
+                    updateShiftCmd.CommandText = @"
+                        UPDATE WorkShifts
+                        SET TotalVehiclesIn = TotalVehiclesIn + 1
+                        WHERE ShiftId = @ShiftId;";
+                    updateShiftCmd.Parameters.AddWithValue("@ShiftId", openShiftId.Value);
+                    updateShiftCmd.ExecuteNonQuery();
+                }
+
                 transaction.Commit();
                 return true;
             }
@@ -412,13 +391,11 @@ public class ParkingRepository
         catch (Exception)
         {
             transaction.Rollback();
-            return false;   
+            return false;
         }
     }
 
-    /// <summary>
-    /// Lấy cấu hình bảng giá theo mã loại phương tiện (XEMAY, OTO) từ bảng PricingRules
-    /// </summary>
+    // Hàm lấy cấu hình bảng giá đỗ xe theo mã loại phương tiện
     public PricingRule? GetPricingRuleByVehicleType(string vehicleTypeId)
     {
         if (string.IsNullOrWhiteSpace(vehicleTypeId))
@@ -455,9 +432,7 @@ public class ParkingRepository
         return null;
     }
 
-    /// <summary>
-    /// Lấy danh sách toàn bộ lượt xe đang gửi trong bãi (Status = 'Parking') để đổ lên thanh tìm kiếm Làn Ra
-    /// </summary>
+    // Hàm lấy danh sách toàn bộ lượt xe đang gửi trong bãi (Status = 'Parking')
     public List<ParkingSession> GetAllActiveParkingSessions()
     {
         List<ParkingSession> sessions = new List<ParkingSession>();
@@ -496,9 +471,7 @@ public class ParkingRepository
         return sessions;
     }
 
-    /// <summary>
-    /// Tìm chính xác lượt gửi đang hoạt động (Status = 'Parking') theo Mã thẻ hoặc Biển số xe
-    /// </summary>
+    // Hàm tìm lượt gửi xe đang hoạt động theo Mã thẻ hoặc Biển số xe
     public ParkingSession? GetActiveSessionByCardOrPlate(string keyword)
     {
         if (string.IsNullOrWhiteSpace(keyword))
@@ -533,7 +506,7 @@ public class ParkingRepository
             WHERE Status = 'Parking'
               AND (
                   UPPER(CardCode) = @RawKeyword
-                  OR UPPER(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', '')) = @NormalizedKeyword
+                  OR UPPER(REPLACE(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', ''), '.', '')) = @NormalizedKeyword
               )
             ORDER BY CheckInTime DESC, SessionId DESC
             LIMIT 1;";
@@ -550,13 +523,7 @@ public class ParkingRepository
         return null;
     }
 
-    /// <summary>
-    /// Hoàn tất thủ tục Xe Ra Bãi (Nghiệp vụ 2 - Check-out) trong 1 Transaction:
-    /// 1. UPDATE ParkingSessions sang 'Completed' cùng số tiền thu
-    /// 2. Giải phóng ô đỗ về 'Available'
-    /// 3. Giải phóng thẻ về 'Available' (hoặc khóa 'Lost' + lưu IncidentReports nếu mất thẻ)
-    /// 4. Lưu hóa đơn thu tiền vào PaymentTransactions và cập nhật doanh thu ca trực (nếu có ca đang mở)
-    /// </summary>
+    // Hàm hoàn tất thủ tục cho xe ra bãi, ghi nhận thanh toán, biên bản mất thẻ và giải phóng chỗ đỗ trong một Transaction
     public bool CompleteCheckOutSession(
         ParkingSession completedSession,
         bool isLostCard,
@@ -572,7 +539,6 @@ public class ParkingRepository
             DateTime checkOutTime = completedSession.CheckOutTime ?? DateTime.Now;
             string checkOutTimeText = checkOutTime.ToString("yyyy-MM-dd HH:mm:ss");
 
-            // Bước 1: Cập nhật lượt gửi trong ParkingSessions sang 'Completed'
             using SqliteCommand updateSessionCmd = connection.CreateCommand();
             updateSessionCmd.Transaction = transaction;
             updateSessionCmd.CommandText = @"
@@ -604,7 +570,6 @@ public class ParkingRepository
                 return false;
             }
 
-            // Bước 2: Giải phóng Ô đỗ về 'Available'
             using SqliteCommand releaseSlotCmd = connection.CreateCommand();
             releaseSlotCmd.Transaction = transaction;
             releaseSlotCmd.CommandText = @"
@@ -615,7 +580,6 @@ public class ParkingRepository
             releaseSlotCmd.Parameters.AddWithValue("@SlotCode", completedSession.SlotCode);
             releaseSlotCmd.ExecuteNonQuery();
 
-            // Bước 3: Giải phóng Thẻ xe hoặc khóa thẻ bị mất + lưu biên bản sự cố
             string targetCardStatus = isLostCard ? "Lost" : "Available";
             using SqliteCommand updateCardCmd = connection.CreateCommand();
             updateCardCmd.Transaction = transaction;
@@ -676,7 +640,6 @@ public class ParkingRepository
                 insertIncidentCmd.ExecuteNonQuery();
             }
 
-            // Bước 4: Ghi nhận hóa đơn thu tiền vào PaymentTransactions & cập nhật ca trực (nếu có)
             int? openShiftId = GetOpenShiftId(connection, transaction);
 
             if (completedSession.ParkingFee > 0m)
@@ -733,6 +696,7 @@ public class ParkingRepository
         }
     }
 
+    // Hàm ánh xạ một dòng dữ liệu từ SqliteDataReader sang đối tượng ParkingSession
     private static ParkingSession MapParkingSession(SqliteDataReader reader)
     {
         ParkingSession session = new ParkingSession
@@ -757,6 +721,7 @@ public class ParkingRepository
         return session;
     }
 
+    // Hàm lấy mã ca trực đang mở (Status = 'Open') hiện tại trong bảng WorkShifts
     private static int? GetOpenShiftId(SqliteConnection connection, SqliteTransaction transaction)
     {
         using SqliteCommand cmd = connection.CreateCommand();
@@ -777,6 +742,7 @@ public class ParkingRepository
         return Convert.ToInt32(scalar);
     }
 
+    // Hàm thêm một bản ghi giao dịch thu tiền vào bảng PaymentTransactions
     private static void InsertPaymentTransaction(
         SqliteConnection connection,
         SqliteTransaction transaction,
@@ -824,7 +790,7 @@ public class ParkingRepository
         cmd.ExecuteNonQuery();
     }
 
-    //Ham lam cho bien số xe nhất quán và đẹp mắt hơn
+    // Hàm làm cho biển số xe nhất quán (bỏ khoảng trắng, dấu gạch ngang, dấu chấm và viết hoa)
     private static string NormalizePlate(string rawPlate)
     {
         if (string.IsNullOrWhiteSpace(rawPlate))
@@ -832,10 +798,10 @@ public class ParkingRepository
             return string.Empty;
         }
 
-        return rawPlate.Trim().Replace(" ", string.Empty).Replace("-", string.Empty).ToUpperInvariant();
+        return rawPlate.Trim().Replace(" ", string.Empty).Replace("-", string.Empty).Replace(".", string.Empty).ToUpperInvariant();
     }
 
-    //Ham chuyen doi string khi lay tu sqlite sang DateTime và kiểm tra null
+    // Hàm chuyển đổi chuỗi ngày giờ lấy từ SQLite sang kiểu DateTime
     private static DateTime ParseSqliteDateTime(string rawDate)
     {
         if (DateTime.TryParse(rawDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed))
@@ -852,6 +818,7 @@ public class ParkingRepository
         return DateTime.MinValue;
     }
 
+    // Hàm thực thi nhanh một câu lệnh SQL không trả về kết quả trong cùng Transaction
     private static void ExecuteNonQuery(SqliteConnection connection, SqliteTransaction transaction, string sql)
     {
         using SqliteCommand cmd = connection.CreateCommand();

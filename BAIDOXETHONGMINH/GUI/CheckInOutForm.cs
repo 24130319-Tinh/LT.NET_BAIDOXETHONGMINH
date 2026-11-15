@@ -6,9 +6,6 @@ using BAIDOXETHONGMINH.Services;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// Component UI Bàn điều khiển Xe Vào / Xe Ra (Tất cả khung hình chữ nhật đều được bo tròn góc)
-/// </summary>
 public partial class CheckInOutForm : Form
 {
     private readonly ParkingService _parkingService = new ParkingService();
@@ -25,6 +22,7 @@ public partial class CheckInOutForm : Form
     [DllImport("Gdi32.dll")]
     private static extern bool DeleteObject(IntPtr hObject);
 
+    // Hàm khởi tạo CheckInOutForm, thiết lập các khung bo góc và gắn sự kiện Load
     public CheckInOutForm()
     {
         InitializeComponent();
@@ -32,12 +30,14 @@ public partial class CheckInOutForm : Form
         Load += CheckInOutForm_Load;
     }
 
+    // Hàm tải dữ liệu danh mục Làn Vào và danh sách xe đang đỗ Làn Ra khi mở Form
     private void CheckInOutForm_Load(object? sender, EventArgs e)
     {
         LoadCheckInCatalogData();
         LoadActiveSessionsForCheckOut();
     }
 
+    // Hàm nạp danh sách Loại xe, Thẻ từ trống và Ô đỗ trống lên Làn Vào
     private void LoadCheckInCatalogData()
     {
         string? previousVehicleTypeId = cboVehicleTypeIn.SelectedValue?.ToString();
@@ -74,6 +74,7 @@ public partial class CheckInOutForm : Form
         NotifySlotCapacityChanged();
     }
 
+    // Hàm lọc và nạp danh sách các Ô đỗ còn trống theo Loại phương tiện đang chọn
     private void LoadAvailableSlotsForSelectedVehicleType()
     {
         VehicleType? selectedType = cboVehicleTypeIn.SelectedItem as VehicleType;
@@ -85,33 +86,30 @@ public partial class CheckInOutForm : Form
         cboSlotIn.DataSource = availableSlots;
     }
 
+    // Hàm phát sự kiện cập nhật số lượng chỗ trống hiện tại lên thanh Menu trái
     private void NotifySlotCapacityChanged()
     {
         (int AvailableSlots, int TotalSlots) summary = _parkingService.GetSlotCapacitySummary();
         SlotCapacityChanged?.Invoke(summary.AvailableSlots, summary.TotalSlots);
     }
 
-    /// <summary>
-    /// Bo tròn tất cả các khung hình chữ nhật / hình vuông (Card, Ô nhập TextBox, Ô chọn ComboBox, Khung ảnh, Nút bấm)
-    /// </summary>
+    // Hàm gắn hiệu ứng bo tròn góc cho toàn bộ các khung Panel, ô nhập liệu và nút bấm trên Form
     private void SetupAllRoundedRectangles()
     {
         Color slateBorder = Color.FromArgb(148, 163, 184);
         Color cardBorder = Color.FromArgb(203, 213, 225);
 
-        // 1. Hai khung lớn Làn Vào & Làn Ra
         AttachRoundedFrame(pnlCheckIn, 18, cardBorder);
         AttachRoundedFrame(pnlCheckOut, 18, cardBorder);
 
-        // 2. Các ô nhập liệu & chọn danh sách (TextBox / ComboBox bọc trong Panel bo tròn)
         AttachRoundedFrame(pnlImagePathBox, 10, slateBorder);
         AttachRoundedFrame(pnlPlateInBox, 10, slateBorder);
         AttachRoundedFrame(pnlVehicleTypeInBox, 10, slateBorder);
         AttachRoundedFrame(pnlCardInBox, 10, slateBorder);
         AttachRoundedFrame(pnlSlotInBox, 10, slateBorder);
         AttachRoundedFrame(pnlSearchSessionBox, 10, slateBorder);
+        AttachRoundedFrame(pnlLostCardCccdBox, 10, slateBorder);
 
-        // 3. Các khung thông tin, đối chiếu ảnh, mất thẻ, tổng tiền
         AttachRoundedFrame(lblShortcutBadge, 10, slateBorder);
         AttachRoundedFrame(pnlPassStatusBanner, 12, Color.FromArgb(147, 197, 253));
         AttachRoundedFrame(pnlSavedPhotoCard, 14, cardBorder);
@@ -120,29 +118,27 @@ public partial class CheckInOutForm : Form
         AttachRoundedFrame(pnlLostCardBox, 12, cardBorder);
         AttachRoundedFrame(pnlTotalBilling, 14, Color.FromArgb(110, 231, 183));
 
-        // 4. Các nút bấm
         AttachRoundedFrame(btnBrowseImage, 10, slateBorder);
         AttachRoundedFrame(btnSubmitCheckIn, 12, Color.FromArgb(37, 99, 235));
         AttachRoundedFrame(btnResetCheckIn, 12, slateBorder);
         AttachRoundedFrame(btnSubmitCheckOut, 12, Color.FromArgb(5, 150, 105));
     }
 
-    /// <summary>
-    /// Cắt vùng hiển thị bo tròn (Region) + Vẽ đường viền bo tròn khử răng cưa (AntiAlias)
-    /// </summary>
+    // Hàm cập nhật vùng hiển thị bo tròn (Region) cho một Control
+    private static void UpdateControlRoundedRegion(Control control, int radius)
+    {
+        if (control.Width <= 4 || control.Height <= 4) return;
+        IntPtr hrgn = CreateRoundRectRgn(0, 0, control.Width + 1, control.Height + 1, radius, radius);
+        control.Region = Region.FromHrgn(hrgn);
+        DeleteObject(hrgn);
+        control.Invalidate();
+    }
+
+    // Hàm gắn sự kiện cắt góc bo tròn và vẽ đường viền khử răng cưa cho một Control
     private static void AttachRoundedFrame(Control control, int radius, Color borderColor)
     {
-        void UpdateRegion()
-        {
-            if (control.Width <= 4 || control.Height <= 4) return;
-            IntPtr hrgn = CreateRoundRectRgn(0, 0, control.Width + 1, control.Height + 1, radius, radius);
-            control.Region = Region.FromHrgn(hrgn);
-            DeleteObject(hrgn);
-            control.Invalidate();
-        }
-
-        control.HandleCreated += (s, e) => UpdateRegion();
-        control.Resize += (s, e) => UpdateRegion();
+        control.HandleCreated += (s, e) => UpdateControlRoundedRegion(control, radius);
+        control.Resize += (s, e) => UpdateControlRoundedRegion(control, radius);
 
         control.Paint += (s, e) =>
         {
@@ -158,6 +154,7 @@ public partial class CheckInOutForm : Form
         };
     }
 
+    // Hàm tạo đối tượng GraphicsPath hình chữ nhật bo tròn 4 góc theo bán kính
     private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
     {
         GraphicsPath path = new GraphicsPath();
@@ -173,9 +170,7 @@ public partial class CheckInOutForm : Form
         return path;
     }
 
-    /// <summary>
-    /// Vẽ khung viền nét đứt bo tròn và biểu tượng hình ảnh bo tròn khi chưa chọn file ảnh
-    /// </summary>
+    // Hàm vẽ khung viền nét đứt và biểu tượng hướng dẫn chọn ảnh khi chưa tải hình xe vào
     private void PicVehicleIn_Paint(object? sender, PaintEventArgs e)
     {
         Graphics g = e.Graphics;
@@ -198,7 +193,6 @@ public partial class CheckInOutForm : Form
 
         if (picVehicleIn.Image != null) return;
 
-        // Vẽ icon bức ảnh (khung bo tròn) ở giữa
         int cx = picVehicleIn.Width / 2;
         int cy = picVehicleIn.Height / 2 - 18;
         using Pen iconPen = new Pen(Color.FromArgb(71, 85, 105), 2f);
@@ -222,6 +216,7 @@ public partial class CheckInOutForm : Form
         g.DrawString("Bấm \"Chọn hình từ máy...\" để mở hộp thoại chọn file ảnh", subFont, Brushes.DimGray, new RectangleF(0, cy + 42, picVehicleIn.Width, 22), sf);
     }
 
+    // Hàm mở hộp thoại OpenFileDialog để chọn file hình ảnh xe từ máy tính và hiển thị lên khung Làn Vào
     private void BtnBrowseImage_Click(object? sender, EventArgs e)
     {
         using OpenFileDialog dialog = new OpenFileDialog
@@ -252,6 +247,7 @@ public partial class CheckInOutForm : Form
         }
     }
 
+    // Hàm tự động đối chiếu biển số vừa nhập với danh sách Vé tháng và tự chọn Loại xe tương ứng
     private void TxtPlateIn_TextChanged(object? sender, EventArgs e)
     {
         string rawPlate = txtPlateIn.Text.Trim();
@@ -280,6 +276,7 @@ public partial class CheckInOutForm : Form
         lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
     }
 
+    // Hàm xử lý sự kiện khi đổi Loại phương tiện ở Làn Vào để tải lại danh sách Ô đỗ trống
     private void CboVehicleTypeIn_SelectedIndexChanged(object? sender, EventArgs e)
     {
         if (_isLoadingCheckInData)
@@ -290,6 +287,7 @@ public partial class CheckInOutForm : Form
         LoadAvailableSlotsForSelectedVehicleType();
     }
 
+    // Hàm xóa trắng các ô nhập liệu và hình ảnh đang chọn ở cột Làn Vào
     private void BtnResetCheckIn_Click(object? sender, EventArgs e)
     {
         txtPlateIn.Clear();
@@ -299,6 +297,7 @@ public partial class CheckInOutForm : Form
         picVehicleIn.Invalidate();
     }
 
+    // Hàm xử lý sự kiện bấm nút [F1] Cho Xe Vào Bãi & Lưu CSDL
     private void BtnSubmitCheckIn_Click(object? sender, EventArgs e)
     {
         string licensePlate = txtPlateIn.Text.Trim();
@@ -355,6 +354,7 @@ public partial class CheckInOutForm : Form
         }
     }
 
+    // Hàm tải danh sách các xe đang đỗ trong bãi lên ComboBox tìm kiếm ở Làn Ra
     private void LoadActiveSessionsForCheckOut(string? preferredCardCode = null)
     {
         _isLoadingCheckOutData = true;
@@ -379,7 +379,10 @@ public partial class CheckInOutForm : Form
             chkLostCard.Checked = false;
             txtLostCardCccd.Clear();
             txtLostCardCccd.Enabled = false;
-            txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+            Color disabledColor = Color.FromArgb(241, 245, 249);
+            txtLostCardCccd.BackColor = disabledColor;
+            pnlLostCardCccdBox.BackColor = disabledColor;
+            pnlLostCardCccdBox.Invalidate();
         }
         finally
         {
@@ -389,6 +392,7 @@ public partial class CheckInOutForm : Form
         RefreshSelectedCheckOutSession();
     }
 
+    // Hàm tính toán lại phí gửi xe và cập nhật giao diện Làn Ra cho xe đang được chọn
     private void RefreshSelectedCheckOutSession()
     {
         CheckOutPreviewModel? selectedItem = cboSearchSession.SelectedItem as CheckOutPreviewModel;
@@ -406,6 +410,7 @@ public partial class CheckInOutForm : Form
         DisplayCheckOutPreview(latestPreview ?? selectedItem);
     }
 
+    // Hàm hiển thị chi tiết thông tin lượt vào, hình ảnh đối chiếu và tổng tiền thu lên cột Làn Ra
     private void DisplayCheckOutPreview(CheckOutPreviewModel preview)
     {
         _currentCheckOutPreview = preview;
@@ -431,6 +436,7 @@ public partial class CheckInOutForm : Form
         lblTotalAmount.Text = $"{preview.FeeResult.TotalAmount:N0} VNĐ";
     }
 
+    // Hàm đọc file ảnh xe lúc vào qua MemoryStream để hiển thị đối chiếu ở Làn Ra mà không gây khóa file
     private void LoadCheckOutVehicleImage(string? imagePath)
     {
         picVehicleOut.Image?.Dispose();
@@ -458,6 +464,7 @@ public partial class CheckInOutForm : Form
         }
     }
 
+    // Hàm đặt lại toàn bộ thông tin hiển thị ở cột Làn Ra về trạng thái trống khi không có xe
     private void ClearCheckOutDisplay()
     {
         _currentCheckOutPreview = null;
@@ -481,6 +488,7 @@ public partial class CheckInOutForm : Form
         lblTotalAmount.Text = "0 VNĐ";
     }
 
+    // Hàm xử lý sự kiện khi chọn một xe khác trên ComboBox tìm kiếm ở Làn Ra
     private void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
     {
         if (_isLoadingCheckOutData)
@@ -494,7 +502,10 @@ public partial class CheckInOutForm : Form
             chkLostCard.Checked = false;
             txtLostCardCccd.Clear();
             txtLostCardCccd.Enabled = false;
-            txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+            Color disabledColor = Color.FromArgb(241, 245, 249);
+            txtLostCardCccd.BackColor = disabledColor;
+            pnlLostCardCccdBox.BackColor = disabledColor;
+            pnlLostCardCccdBox.Invalidate();
         }
         finally
         {
@@ -504,11 +515,15 @@ public partial class CheckInOutForm : Form
         RefreshSelectedCheckOutSession();
     }
 
+    // Hàm xử lý sự kiện khi tích hoặc bỏ tích ô Khách mất thẻ để cộng 50.000đ tiền phạt và bật ô nhập CCCD
     private void ChkLostCard_CheckedChanged(object? sender, EventArgs e)
     {
         bool isLostCard = chkLostCard.Checked;
+        Color boxBackColor = isLostCard ? Color.White : Color.FromArgb(241, 245, 249);
         txtLostCardCccd.Enabled = isLostCard;
-        txtLostCardCccd.BackColor = isLostCard ? Color.White : Color.FromArgb(241, 245, 249);
+        txtLostCardCccd.BackColor = boxBackColor;
+        pnlLostCardCccdBox.BackColor = boxBackColor;
+        pnlLostCardCccdBox.Invalidate();
 
         if (!isLostCard)
         {
@@ -527,6 +542,7 @@ public partial class CheckInOutForm : Form
         RefreshSelectedCheckOutSession();
     }
 
+    // Hàm xử lý sự kiện bấm nút [F2] Xác Nhận Thu Tiền & Giải Phóng Chỗ Đỗ
     private void BtnSubmitCheckOut_Click(object? sender, EventArgs e)
     {
         if (_currentCheckOutPreview == null)
@@ -575,6 +591,7 @@ public partial class CheckInOutForm : Form
         }
     }
 
+    // Hàm bắt phím tắt bàn phím F1 (Cho xe vào), F2 (Cho xe ra) và Esc (Xóa trắng dữ liệu nhập)
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         if (keyData == Keys.F1)

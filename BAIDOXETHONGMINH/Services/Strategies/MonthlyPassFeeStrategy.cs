@@ -3,11 +3,9 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services.Strategies;
 
-/// <summary>
-/// Chiến lược 1: Tính phí cho Khách có Vé tháng hợp lệ và còn thời hạn (Miễn phí gửi lượt)
-/// </summary>
 public class MonthlyPassFeeStrategy : IFeeCalculationStrategy
 {
+    // Hàm tính phí cho khách có Vé tháng hợp lệ còn hạn (miễn phí gửi lượt, chỉ cộng tiền phạt nếu mất thẻ)
     public FeeCalculationResult Calculate(
         DateTime checkInTime,
         DateTime checkOutTime,

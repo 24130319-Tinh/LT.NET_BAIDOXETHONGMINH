@@ -3,11 +3,9 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services.Strategies;
 
-/// <summary>
-/// Giao diện Chiến lược tính phí gửi xe (Strategy Pattern)
-/// </summary>
 public interface IFeeCalculationStrategy
 {
+    // Hàm định nghĩa giao diện tính phí gửi xe và tiền phạt cho từng chiến lược
     FeeCalculationResult Calculate(
         DateTime checkInTime,
         DateTime checkOutTime,

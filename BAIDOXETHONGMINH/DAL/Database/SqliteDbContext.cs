@@ -2,24 +2,15 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
 
-/// <summary>
-/// Quản lý kết nối và khởi tạo cấu trúc 12 bảng cho CSDL SQLite (smart_parking.db)
-/// </summary>
 public static class SqliteDbContext
 {
-    /// <summary>
-    /// Đường dẫn tới file vật lý DAL/Database/smart_parking.db
-    /// </summary>
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
-
-    
 
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";
 
+    // Hàm xác định đường dẫn tuyệt đối tới file cơ sở dữ liệu smart_parking.db
     private static string ResolveDatabasePath()
-    
     {
-        // Ưu tiên trỏ trực tiếp tới file DAL/Database/smart_parking.db trong thư mục Project khi chạy Debug/Release
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         DirectoryInfo? dir = new DirectoryInfo(baseDir);
 
@@ -40,15 +31,12 @@ public static class SqliteDbContext
             dir = dir.Parent;
         }
 
-        // Dự phòng nếu chạy bản đóng gói độc lập
         string fallbackDir = Path.Combine(baseDir, "DAL", "Database");
         Directory.CreateDirectory(fallbackDir);
         return Path.Combine(fallbackDir, "smart_parking.db");
     }
 
-    /// <summary>
-    /// Mở kết nối SQLite đã bật kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
-    /// </summary>
+    // Hàm mở kết nối SQLite và bật chế độ kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
     public static SqliteConnection GetConnection()
     {
         SqliteConnection connection = new SqliteConnection(ConnectionString);
@@ -61,9 +49,7 @@ public static class SqliteDbContext
         return connection;
     }
 
-    /// <summary>
-    /// Đảm bảo file smart_parking.db có đủ cấu trúc 12 bảng (không tự nạp dữ liệu mẫu)
-    /// </summary>
+    // Hàm khởi tạo cấu trúc 12 bảng cho CSDL và nạp dữ liệu mẫu nếu CSDL đang trống
     public static void InitializeDatabase()
     {
         using (SqliteConnection connection = GetConnection())
@@ -73,9 +59,10 @@ public static class SqliteDbContext
             cmd.ExecuteNonQuery();
         }
 
-        DatabaseSeedHelper.ResetAndSeedDatabase();
+        DatabaseSeedHelper.SeedTestDataIfEmpty();
     }
 
+    // Hàm đọc câu lệnh SQL tạo bảng từ file schema.sql hoặc chuỗi SQL dự phòng
     private static string GetSchemaSql()
     {
         string schemaFilePath = Path.Combine(Path.GetDirectoryName(DatabaseFilePath) ?? string.Empty, "schema.sql");

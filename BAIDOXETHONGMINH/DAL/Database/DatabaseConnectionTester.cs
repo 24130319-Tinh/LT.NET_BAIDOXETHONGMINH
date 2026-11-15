@@ -3,14 +3,9 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
 
-/// <summary>
-/// Lớp kiểm tra kết nối tới CSDL SQLite (smart_parking.db) có tồn tại và mở được hay không
-/// </summary>
 public static class DatabaseConnectionTester
 {
-    /// <summary>
-    /// Trả về true nếu file smart_parking.db tồn tại và mở kết nối thành công
-    /// </summary>
+    // Hàm kiểm tra file cơ sở dữ liệu smart_parking.db có tồn tại và mở kết nối được hay không
     public static bool IsConnectionAvailable()
     {
         try
@@ -28,5 +23,4 @@ public static class DatabaseConnectionTester
             return false;
         }
     }
-    
 }

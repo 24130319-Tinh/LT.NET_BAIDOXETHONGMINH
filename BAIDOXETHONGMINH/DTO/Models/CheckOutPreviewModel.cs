@@ -1,8 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Models;
 
-/// <summary>
-/// Mô hình dữ liệu tổng hợp thông tin lượt xe đang đỗ và kết quả tính tiền để hiển thị ở Làn Ra
-/// </summary>
 public class CheckOutPreviewModel
 {
     public int SessionId { get; set; }

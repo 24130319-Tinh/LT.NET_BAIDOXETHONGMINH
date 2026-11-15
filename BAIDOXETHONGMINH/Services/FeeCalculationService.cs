@@ -4,23 +4,15 @@ using BAIDOXETHONGMINH.Services.Strategies;
 
 namespace BAIDOXETHONGMINH.Services;
 
-/// <summary>
-/// Context điều phối thuật toán tính phí gửi xe và tiền phạt mất thẻ theo Strategy Pattern
-/// </summary>
 public class FeeCalculationService
 {
-    /// <summary>
-    /// Mức phạt mất thẻ thống nhất áp dụng chung cho mọi loại thẻ / loại xe (50.000 VNĐ)
-    /// </summary>
     public const decimal UnifiedLostCardPenalty = 50000m;
 
     private readonly IFeeCalculationStrategy _monthlyPassStrategy = new MonthlyPassFeeStrategy();
     private readonly IFeeCalculationStrategy _carTurnStrategy = new CarTurnFeeStrategy();
     private readonly IFeeCalculationStrategy _motorbikeTurnStrategy = new MotorbikeTurnFeeStrategy();
 
-    /// <summary>
-    /// Tính toán chi tiết phí đỗ xe bằng cách lựa chọn Strategy phù hợp.
-    /// </summary>
+    // Hàm điều phối tính toán chi tiết phí đỗ xe và tiền phạt mất thẻ theo chiến lược phù hợp
     public FeeCalculationResult CalculateFee(
         DateTime checkInTime,
         DateTime checkOutTime,
@@ -46,9 +38,7 @@ public class FeeCalculationService
         );
     }
 
-    /// <summary>
-    /// Lựa chọn chiến lược tính phí dựa trên trạng thái Vé tháng và Loại phương tiện
-    /// </summary>
+    // Hàm lựa chọn chiến lược tính phí dựa trên trạng thái Vé tháng và Loại phương tiện
     public IFeeCalculationStrategy ResolveStrategy(
         string vehicleTypeId,
         MonthlyPass? activePass,
@@ -68,6 +58,7 @@ public class FeeCalculationService
         return _motorbikeTurnStrategy;
     }
 
+    // Hàm kiểm tra Vé tháng có đang hoạt động và còn hiệu lực tại thời điểm xe ra hay không
     private static bool IsMonthlyPassValidAtCheckOut(MonthlyPass? activePass, DateTime checkOutTime)
     {
         if (activePass == null)
@@ -82,6 +73,7 @@ public class FeeCalculationService
         return isStatusActive && isWithinDateRange;
     }
 
+    // Hàm định dạng khoảng thời gian đỗ xe sang chuỗi hiển thị giờ và phút
     private static string FormatDurationText(TimeSpan duration)
     {
         int totalMinutes = Math.Max(1, (int)Math.Ceiling(duration.TotalMinutes));

@@ -4,59 +4,51 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services;
 
-/// <summary>
-/// Tầng xử lý logic nghiệp vụ cho Nghiệp vụ 1 (Xe Vào Bãi) & Nghiệp vụ 2 (Xe Ra Bãi & Tính Tiền)
-/// </summary>
 public class ParkingService
 {
     private readonly ParkingRepository _parkingRepository;
     private readonly FeeCalculationService _feeCalculationService;
 
+    // Hàm khởi tạo mặc định của ParkingService
     public ParkingService()
     {
         _parkingRepository = new ParkingRepository();
         _feeCalculationService = new FeeCalculationService();
     }
 
+    // Hàm khởi tạo ParkingService với đối tượng ParkingRepository truyền vào
     public ParkingService(ParkingRepository parkingRepository)
     {
         _parkingRepository = parkingRepository;
         _feeCalculationService = new FeeCalculationService();
     }
 
+    // Hàm khởi tạo ParkingService với đầy đủ ParkingRepository và FeeCalculationService
     public ParkingService(ParkingRepository parkingRepository, FeeCalculationService feeCalculationService)
     {
         _parkingRepository = parkingRepository;
         _feeCalculationService = feeCalculationService;
     }
 
-    /// <summary>
-    /// Đảm bảo danh mục cơ bản (Loại xe, Ô đỗ, Thẻ xe, Bảng giá) đã sẵn sàng khi chạy thử nghiệm
-    /// </summary>
+    // Hàm đảm bảo danh mục cơ bản (Loại xe, Ô đỗ, Thẻ xe, Bảng giá) đã sẵn sàng khi chạy thử nghiệm
     public void EnsureCatalogForTesting()
     {
         _parkingRepository.SeedBaseCatalogIfEmpty();
     }
 
-    /// <summary>
-    /// Lấy danh sách tất cả loại phương tiện (XEMAY, OTO)
-    /// </summary>
+    // Hàm lấy danh sách tất cả loại phương tiện (XEMAY, OTO)
     public List<VehicleType> GetVehicleTypes()
     {
         return _parkingRepository.GetVehicleTypes();
     }
 
-    /// <summary>
-    /// Lấy danh sách các thẻ xe đang rảnh (Status = 'Available')
-    /// </summary>
+    // Hàm lấy danh sách các thẻ xe đang rảnh (Status = 'Available')
     public List<ParkingCard> GetAvailableCards()
     {
         return _parkingRepository.GetAvailableCards();
     }
 
-    /// <summary>
-    /// Lấy danh sách các ô đỗ còn trống theo mã loại xe
-    /// </summary>
+    // Hàm lấy danh sách các ô đỗ còn trống theo mã loại phương tiện
     public List<ParkingSlot> GetAvailableSlots(string vehicleTypeId)
     {
         if (string.IsNullOrWhiteSpace(vehicleTypeId))
@@ -67,17 +59,13 @@ public class ParkingService
         return _parkingRepository.GetAvailableSlotsByVehicleType(vehicleTypeId.Trim());
     }
 
-    /// <summary>
-    /// Lấy số lượng ô đỗ còn trống trên tổng số ô đỗ của bãi
-    /// </summary>
+    // Hàm lấy số lượng ô đỗ còn trống trên tổng số ô đỗ của bãi
     public (int AvailableSlots, int TotalSlots) GetSlotCapacitySummary()
     {
         return _parkingRepository.GetSlotCapacitySummary();
     }
 
-    /// <summary>
-    /// Kiểm tra xem biển số xe có thuộc Vé tháng đang hoạt động và còn hạn hay không
-    /// </summary>
+    // Hàm kiểm tra biển số xe có thuộc Vé tháng đang hoạt động và còn hạn hay không
     public MonthlyPass? GetActiveMonthlyPass(string licensePlate)
     {
         if (string.IsNullOrWhiteSpace(licensePlate))
@@ -88,11 +76,7 @@ public class ParkingService
         return _parkingRepository.GetActiveMonthlyPassByPlate(licensePlate.Trim());
     }
 
-    /// <summary>
-    /// Xử lý nghiệp vụ Cho Xe Vào Bãi (Nghiệp vụ 1 - Check-in):
-    /// Kiểm tra hợp lệ đầu vào, chống trùng biển số đang đỗ, lưu ảnh vào Assets/SessionImages
-    /// và ghi nhận lượt gửi xuống CSDL.
-    /// </summary>
+    // Hàm xử lý nghiệp vụ Cho Xe Vào Bãi (Nghiệp vụ 1 - Check-in), kiểm tra hợp lệ, lưu ảnh và ghi CSDL
     public (bool IsSuccess, string Message) CheckInVehicle(
         string licensePlate,
         string vehicleTypeId,
@@ -127,18 +111,15 @@ public class ParkingService
             return (false, "Khu vực này đã hết Ô đỗ trống hoặc bạn chưa chọn vị trí đỗ!");
         }
 
-        // Kiểm tra chống trùng biển số đang gửi trong bãi
         bool isAlreadyParked = _parkingRepository.IsLicensePlateCurrentlyParked(cleanedPlate);
         if (isAlreadyParked)
         {
             return (false, $"Xe mang biển số '{cleanedPlate}' hiện đang ở trong bãi (chưa làm thủ tục ra)!");
         }
 
-        // Kiểm tra vé tháng hợp lệ
         MonthlyPass? activePass = _parkingRepository.GetActiveMonthlyPassByPlate(cleanedPlate);
         bool hasMonthlyPass = activePass != null;
 
-        // Sao chép ảnh vào thư mục Assets/SessionImages
         string savedImagePath = SaveCheckInImageToAssets(sourceImagePath, cleanedPlate);
 
         ParkingSession session = new ParkingSession
@@ -174,10 +155,7 @@ public class ParkingService
         );
     }
 
-    /// <summary>
-    /// Sao chép file ảnh xe người dùng chọn từ OpenFileDialog vào thư mục Assets/SessionImages
-    /// và trả về đường dẫn lưu trong CSDL.
-    /// </summary>
+    // Hàm sao chép file ảnh xe lúc vào sang thư mục Assets/SessionImages và trả về đường dẫn lưu trữ
     public string SaveCheckInImageToAssets(string sourceImagePath, string licensePlate)
     {
         if (string.IsNullOrWhiteSpace(sourceImagePath) || !File.Exists(sourceImagePath))
@@ -203,18 +181,13 @@ public class ParkingService
         return destFullPath;
     }
 
-    /// <summary>
-    /// Lấy danh sách tất cả lượt xe đang gửi trong bãi (Status = 'Parking')
-    /// </summary>
+    // Hàm lấy danh sách tất cả lượt xe đang gửi trong bãi (Status = 'Parking')
     public List<ParkingSession> GetActiveParkingSessions()
     {
         return _parkingRepository.GetAllActiveParkingSessions();
     }
 
-    /// <summary>
-    /// Lấy danh sách các mô hình xem trước (CheckOutPreviewModel) của toàn bộ xe đang trong bãi
-    /// để hiển thị trực tiếp lên ComboBox tìm kiếm ở Làn Ra.
-    /// </summary>
+    // Hàm lấy danh sách các mô hình xem trước của toàn bộ xe đang đỗ để hiển thị lên ComboBox Làn Ra
     public List<CheckOutPreviewModel> GetActiveCheckOutPreviews(bool isLostCard = false)
     {
         List<ParkingSession> activeSessions = _parkingRepository.GetAllActiveParkingSessions();
@@ -229,10 +202,7 @@ public class ParkingService
         return previews;
     }
 
-    /// <summary>
-    /// Tra cứu thông tin xe lúc vào và tự động tính toán chi tiết số tiền cần thu ở Làn Ra
-    /// theo Mã thẻ hoặc Biển số xe.
-    /// </summary>
+    // Hàm tra cứu thông tin xe lúc vào và tự động tính toán chi tiết số tiền cần thu theo Mã thẻ hoặc Biển số
     public CheckOutPreviewModel? PreviewCheckOut(string cardOrPlate, bool isLostCard)
     {
         if (string.IsNullOrWhiteSpace(cardOrPlate))
@@ -249,11 +219,7 @@ public class ParkingService
         return BuildCheckOutPreview(activeSession, isLostCard);
     }
 
-    /// <summary>
-    /// Xác nhận thu tiền và cho xe ra bãi (Nghiệp vụ 2 - Check-out):
-    /// Kiểm tra hợp lệ (nếu tích mất thẻ bắt buộc phải nhập số CCCD biên bản),
-    /// lưu kết quả vào ParkingSessions, PaymentTransactions, IncidentReports và giải phóng Ô đỗ + Thẻ.
-    /// </summary>
+    // Hàm xác nhận thu tiền, lưu biên bản mất thẻ (nếu có) và giải phóng chỗ đỗ khi cho xe ra bãi
     public (bool IsSuccess, string Message) ConfirmCheckOut(
         string cardOrPlate,
         bool isLostCard,
@@ -342,6 +308,7 @@ public class ParkingService
         );
     }
 
+    // Hàm tạo đối tượng CheckOutPreviewModel chứa thông tin lượt đỗ và kết quả tính phí tại thời điểm hiện tại
     private CheckOutPreviewModel BuildCheckOutPreview(ParkingSession session, bool isLostCard)
     {
         DateTime checkOutTime = DateTime.Now;
@@ -377,9 +344,7 @@ public class ParkingService
         };
     }
 
-    /// <summary>
-    /// Chuẩn hóa biển số xe (cắt khoảng trắng thừa ở 2 đầu và viết hoa)
-    /// </summary>
+    // Hàm chuẩn hóa chuỗi biển số xe (cắt khoảng trắng thừa ở 2 đầu và chuyển thành chữ in hoa)
     public static string FormatLicensePlate(string rawPlate)
     {
         if (string.IsNullOrWhiteSpace(rawPlate))
@@ -390,6 +355,7 @@ public class ParkingService
         return rawPlate.Trim().ToUpperInvariant();
     }
 
+    // Hàm xác định đường dẫn tới thư mục Assets/SessionImages để lưu hình ảnh xe vào bãi
     private static string ResolveSessionImagesDirectory()
     {
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -415,6 +381,7 @@ public class ParkingService
         return Path.Combine(baseDir, "Assets", "SessionImages");
     }
 
+    // Hàm loại bỏ các ký tự đặc biệt khỏi biển số để tạo tên file ảnh hợp lệ
     private static string SanitizeFileNameToken(string rawText)
     {
         if (string.IsNullOrWhiteSpace(rawText))

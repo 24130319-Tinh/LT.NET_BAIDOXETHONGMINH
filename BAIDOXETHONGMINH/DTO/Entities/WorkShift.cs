@@ -1,9 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng WorkShifts: Quản lý thông tin ca trực của nhân viên
-/// Status: "Open" (Đang trực), "Closed" (Đã chốt ca)
-/// </summary>
 public class WorkShift
 {
     public int ShiftId { get; set; }

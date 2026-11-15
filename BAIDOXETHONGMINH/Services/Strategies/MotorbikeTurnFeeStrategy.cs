@@ -3,11 +3,9 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services.Strategies;
 
-/// <summary>
-/// Chiến lược 3: Tính phí cho Xe máy gửi Vé lượt (Tính theo lượt ban ngày hoặc qua đêm)
-/// </summary>
 public class MotorbikeTurnFeeStrategy : IFeeCalculationStrategy
 {
+    // Hàm tính phí cho Xe máy gửi vé lượt (tính theo lượt ban ngày hoặc lượt qua đêm)
     public FeeCalculationResult Calculate(
         DateTime checkInTime,
         DateTime checkOutTime,

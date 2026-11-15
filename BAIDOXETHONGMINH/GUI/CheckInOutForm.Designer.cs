@@ -11,7 +11,6 @@ partial class CheckInOutForm
 
     private TableLayoutPanel tlpMainColumns = null!;
 
-    // Cột trái: Làn Vào
     private Panel pnlCheckIn = null!;
     private Label lblCheckInHeader = null!;
     private PictureBox picVehicleIn = null!;
@@ -37,7 +36,6 @@ partial class CheckInOutForm
     private Button btnSubmitCheckIn = null!;
     private Button btnResetCheckIn = null!;
 
-    // Cột phải: Làn Ra
     private Panel pnlCheckOut = null!;
     private Label lblCheckOutHeader = null!;
     private Panel pnlSearchSessionBox = null!;
@@ -60,6 +58,7 @@ partial class CheckInOutForm
     private Panel pnlLostCardBox = null!;
     private CheckBox chkLostCard = null!;
     private Label lblLostCardCccd = null!;
+    private Panel pnlLostCardCccdBox = null!;
     private TextBox txtLostCardCccd = null!;
     private Panel pnlTotalBilling = null!;
     private Label lblTotalTitle = null!;
@@ -67,6 +66,7 @@ partial class CheckInOutForm
     private Label lblTotalAmount = null!;
     private Button btnSubmitCheckOut = null!;
 
+    // Hàm giải phóng tài nguyên giao diện của CheckInOutForm khi đóng
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -76,6 +76,7 @@ partial class CheckInOutForm
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo và bố trí toàn bộ các điều khiển giao diện cho Làn Vào và Làn Ra
     private void InitializeComponent()
     {
         pnlHeader = new Panel();
@@ -131,6 +132,7 @@ partial class CheckInOutForm
         pnlLostCardBox = new Panel();
         chkLostCard = new CheckBox();
         lblLostCardCccd = new Label();
+        pnlLostCardCccdBox = new Panel();
         txtLostCardCccd = new TextBox();
         pnlTotalBilling = new Panel();
         lblTotalTitle = new Label();
@@ -142,9 +144,6 @@ partial class CheckInOutForm
 
         ClientSize = new Size(1020, 720);
 
-        // 
-        // pnlHeader (Thanh tiêu đề trên cùng)
-        // 
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -175,9 +174,6 @@ partial class CheckInOutForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // 
-        // tlpMainColumns (Chia 2 cột 50% - 50%)
-        // 
         tlpMainColumns.Size = new Size(1020, 652);
         tlpMainColumns.Dock = DockStyle.Fill;
         tlpMainColumns.ColumnCount = 2;
@@ -188,9 +184,6 @@ partial class CheckInOutForm
         tlpMainColumns.Padding = new Padding(10, 4, 10, 12);
         tlpMainColumns.BackColor = Color.FromArgb(248, 250, 252);
 
-        // =========================================================
-        // CỘT TRÁI: LÀN VÀO — GHI NHẬN XE VÀO BÃI
-        // =========================================================
         pnlCheckIn.Size = new Size(480, 620);
         pnlCheckIn.Dock = DockStyle.Fill;
         pnlCheckIn.BackColor = Color.White;
@@ -211,7 +204,6 @@ partial class CheckInOutForm
         picVehicleIn.Paint += PicVehicleIn_Paint;
         picVehicleIn.Click += BtnBrowseImage_Click;
 
-        // Khung bo tròn bọc ô đường dẫn ảnh
         pnlImagePathBox.Location = new Point(18, 223);
         pnlImagePathBox.Size = new Size(302, 34);
         pnlImagePathBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -237,7 +229,6 @@ partial class CheckInOutForm
         btnBrowseImage.Cursor = Cursors.Hand;
         btnBrowseImage.Click += BtnBrowseImage_Click;
 
-        // Bảng 2x2 cho 4 trường nhập thủ công (Tất cả đều bọc trong Panel bo tròn)
         tlpInputsIn.Location = new Point(18, 265);
         tlpInputsIn.Size = new Size(444, 134);
         tlpInputsIn.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -327,7 +318,6 @@ partial class CheckInOutForm
         tlpInputsIn.Controls.Add(pnlCardInBox, 0, 3);
         tlpInputsIn.Controls.Add(pnlSlotInBox, 1, 3);
 
-        // Banner đối chiếu vé tháng (Bo góc)
         pnlPassStatusBanner.Location = new Point(18, 408);
         pnlPassStatusBanner.Size = new Size(444, 40);
         pnlPassStatusBanner.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -351,7 +341,6 @@ partial class CheckInOutForm
         pnlPassStatusBanner.Controls.Add(lblPassStatusIn);
         pnlPassStatusBanner.Controls.Add(lblPassTestHint);
 
-        // Nút Lưu Xe Vào & Xóa trắng
         btnSubmitCheckIn.Text = "[F1] Cho Xe Vào Bãi & Lưu CSDL";
         btnSubmitCheckIn.Location = new Point(18, 462);
         btnSubmitCheckIn.Size = new Size(344, 44);
@@ -384,9 +373,6 @@ partial class CheckInOutForm
         pnlCheckIn.Controls.Add(btnSubmitCheckIn);
         pnlCheckIn.Controls.Add(btnResetCheckIn);
 
-        // =========================================================
-        // CỘT PHẢI: LÀN RA — ĐỐI CHIẾU HÌNH & TÍNH TIỀN
-        // =========================================================
         pnlCheckOut.Size = new Size(480, 620);
         pnlCheckOut.Dock = DockStyle.Fill;
         pnlCheckOut.BackColor = Color.White;
@@ -398,7 +384,6 @@ partial class CheckInOutForm
         lblCheckOutHeader.Location = new Point(18, 16);
         lblCheckOutHeader.AutoSize = true;
 
-        // Khung bo tròn bọc ComboBox tìm kiếm lượt vào
         pnlSearchSessionBox.Location = new Point(18, 46);
         pnlSearchSessionBox.Size = new Size(444, 36);
         pnlSearchSessionBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -412,7 +397,6 @@ partial class CheckInOutForm
         cboSearchSession.SelectedIndexChanged += CboSearchSession_SelectedIndexChanged;
         pnlSearchSessionBox.Controls.Add(cboSearchSession);
 
-        // Khung 2 cột đối chiếu Hình đã lưu & Thông tin lượt vào
         tlpCompareOut.Location = new Point(18, 94);
         tlpCompareOut.Size = new Size(444, 175);
         tlpCompareOut.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -471,7 +455,6 @@ partial class CheckInOutForm
         pnlSavedPhotoCard.Controls.Add(lblSavedPhotoTitle);
         pnlSavedPhotoCard.Controls.Add(lblSavedTimeIn);
 
-        // Cột nhỏ bên phải: Thông tin chi tiết
         pnlSessionDetailsCard.Dock = DockStyle.Fill;
         pnlSessionDetailsCard.BackColor = Color.White;
         pnlSessionDetailsCard.Margin = new Padding(6, 0, 0, 0);
@@ -498,7 +481,6 @@ partial class CheckInOutForm
         tlpCompareOut.Controls.Add(pnlSavedPhotoCard, 0, 0);
         tlpCompareOut.Controls.Add(pnlSessionDetailsCard, 1, 0);
 
-        // Khung Checkbox Khách mất thẻ & Nhập CCCD biên bản
         pnlLostCardBox.Location = new Point(18, 278);
         pnlLostCardBox.Size = new Size(444, 78);
         pnlLostCardBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -506,6 +488,7 @@ partial class CheckInOutForm
         pnlLostCardBox.Padding = new Padding(12, 6, 12, 6);
 
         chkLostCard.Text = "Khách mất thẻ (+50.000đ tiền phạt & nhập CCCD biên bản)";
+        chkLostCard.UseMnemonic = false;
         chkLostCard.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         chkLostCard.Location = new Point(12, 8);
         chkLostCard.Size = new Size(420, 24);
@@ -514,24 +497,28 @@ partial class CheckInOutForm
         lblLostCardCccd.Text = "Số CCCD biên bản (*):";
         lblLostCardCccd.Font = new Font("Segoe UI", 8.8F);
         lblLostCardCccd.ForeColor = Color.FromArgb(71, 85, 105);
-        lblLostCardCccd.Location = new Point(12, 40);
-        lblLostCardCccd.Size = new Size(145, 25);
+        lblLostCardCccd.Location = new Point(12, 38);
+        lblLostCardCccd.Size = new Size(145, 32);
         lblLostCardCccd.TextAlign = ContentAlignment.MiddleLeft;
 
-        txtLostCardCccd.Location = new Point(160, 40);
-        txtLostCardCccd.Size = new Size(270, 25);
-        txtLostCardCccd.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        pnlLostCardCccdBox.Location = new Point(160, 38);
+        pnlLostCardCccdBox.Size = new Size(270, 32);
+        pnlLostCardCccdBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        pnlLostCardCccdBox.BackColor = Color.FromArgb(241, 245, 249);
+        pnlLostCardCccdBox.Padding = new Padding(10, 7, 10, 5);
+
+        txtLostCardCccd.Dock = DockStyle.Fill;
         txtLostCardCccd.Font = new Font("Consolas", 9.5F);
-        txtLostCardCccd.BorderStyle = BorderStyle.FixedSingle;
+        txtLostCardCccd.BorderStyle = BorderStyle.None;
         txtLostCardCccd.PlaceholderText = "Nhập số CCCD / Ghi chú mất thẻ...";
         txtLostCardCccd.Enabled = false;
         txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+        pnlLostCardCccdBox.Controls.Add(txtLostCardCccd);
 
         pnlLostCardBox.Controls.Add(chkLostCard);
         pnlLostCardBox.Controls.Add(lblLostCardCccd);
-        pnlLostCardBox.Controls.Add(txtLostCardCccd);
+        pnlLostCardBox.Controls.Add(pnlLostCardCccdBox);
 
-        // Khung Tổng tiền thu
         pnlTotalBilling.Location = new Point(18, 368);
         pnlTotalBilling.Size = new Size(444, 76);
         pnlTotalBilling.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -561,7 +548,6 @@ partial class CheckInOutForm
         pnlTotalBilling.Controls.Add(lblTotalTitle);
         pnlTotalBilling.Controls.Add(lblFeeBreakdown);
 
-        // Nút Xác nhận thu tiền
         btnSubmitCheckOut.Text = "[F2] Xác Nhận Thu Tiền & Giải Phóng Chỗ Đỗ";
         btnSubmitCheckOut.Location = new Point(18, 462);
         btnSubmitCheckOut.Size = new Size(444, 44);
@@ -584,9 +570,6 @@ partial class CheckInOutForm
         tlpMainColumns.Controls.Add(pnlCheckIn, 0, 0);
         tlpMainColumns.Controls.Add(pnlCheckOut, 1, 0);
 
-        // 
-        // CheckInOutForm
-        // 
         AutoScaleMode = AutoScaleMode.Font;
         FormBorderStyle = FormBorderStyle.None;
         KeyPreview = true;
@@ -596,6 +579,7 @@ partial class CheckInOutForm
         ResumeLayout(false);
     }
 
+    // Hàm tạo và thêm một dòng nhãn tiêu đề - giá trị vào bảng thông tin chi tiết ở cột Làn Ra
     private static void AddDetailRowToTable(TableLayoutPanel table, int row, string labelText, out Label valueLabel, string defaultVal, bool isAccent)
     {
         Label lblTitle = new Label

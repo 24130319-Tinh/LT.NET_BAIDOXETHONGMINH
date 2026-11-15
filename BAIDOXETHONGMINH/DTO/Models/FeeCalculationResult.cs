@@ -1,8 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Models;
 
-/// <summary>
-/// Kết quả tính toán thời gian đỗ xe và chi tiết các khoản phí khi xe ra bãi (Nghiệp vụ 2)
-/// </summary>
 public class FeeCalculationResult
 {
     public string DurationText { get; set; } = string.Empty;

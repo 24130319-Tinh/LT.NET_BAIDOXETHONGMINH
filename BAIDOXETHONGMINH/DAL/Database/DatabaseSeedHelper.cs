@@ -2,16 +2,9 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
 
-/// <summary>
-/// Tiện ích hỗ trợ xóa sạch toàn bộ dữ liệu trong smart_parking.db
-/// và nạp lại bộ dữ liệu khởi tạo chuẩn giống trong schema.sql.
-/// </summary>
 public static class DatabaseSeedHelper
 {
-    /// <summary>
-    /// Chức năng 1: Xóa sạch toàn bộ dữ liệu trong cả 12 bảng của cơ sở dữ liệu
-    /// và đưa bộ đếm tự tăng (AUTOINCREMENT) về 1.
-    /// </summary>
+    // Hàm xóa sạch toàn bộ dữ liệu trong cả 12 bảng và đặt lại bộ đếm tự tăng về 1
     public static void ClearAllData()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -48,9 +41,7 @@ public static class DatabaseSeedHelper
         }
     }
 
-    /// <summary>
-    /// Chức năng 2: Nạp bộ dữ liệu khởi tạo & dữ liệu test giống trong schema.sql.
-    /// </summary>
+    // Hàm nạp bộ dữ liệu khởi tạo và dữ liệu kiểm thử mẫu vào cơ sở dữ liệu
     public static void SeedTestData()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -59,16 +50,13 @@ public static class DatabaseSeedHelper
         try
         {
             const string seedSql = @"
-                -- 1. Tài khoản nhân viên trực ca mặc định
                 INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, IsActive) VALUES
                 (1, 'admin', '123456', 'Admin Tính', '0901234567', 1);
 
-                -- 2. Danh mục 2 loại phương tiện (XEMAY, OTO)
                 INSERT OR IGNORE INTO VehicleTypes (VehicleTypeId, TypeName, Description) VALUES
                 ('XEMAY', 'Xe máy', 'Xe máy 2 bánh / Xe tay ga'),
                 ('OTO', 'Ô tô', 'Ô tô con 4 - 7 chỗ');
 
-                -- 3. Bảng giá đỗ xe (Phạt mất thẻ thống nhất 50.000đ cho mọi loại thẻ)
                 INSERT OR IGNORE INTO PricingRules
                 (RuleId, VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt)
                 VALUES
@@ -77,12 +65,10 @@ public static class DatabaseSeedHelper
 
                 UPDATE PricingRules SET LostCardPenalty = 50000 WHERE LostCardPenalty <> 50000;
 
-                -- 4. Hai khu vực đỗ xe: Khu A (Xe máy - 12 ô) & Khu B (Ô tô - 8 ô)
                 INSERT OR IGNORE INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity) VALUES
                 ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 12),
                 ('ZONE_B', 'Khu B - Ô tô', 'OTO', 8);
 
-                -- 5. Danh sách 20 ô đỗ xe (12 ô Khu A, 8 ô Khu B)
                 INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES
                 ('A-01', 'ZONE_A', 'Occupied', '59X3-112.23'),
                 ('A-02', 'ZONE_A', 'Available', NULL),
@@ -105,7 +91,6 @@ public static class DatabaseSeedHelper
                 ('B-07', 'ZONE_B', 'Available', NULL),
                 ('B-08', 'ZONE_B', 'Available', NULL);
 
-                -- 6. Danh sách 20 thẻ từ (THE001 .. THE020)
                 INSERT OR IGNORE INTO ParkingCards (CardCode, LicensePlate, Status) VALUES
                 ('THE001', '59X3-112.23', 'InUse'),
                 ('THE002', '51G-456.78', 'InUse'),
@@ -128,25 +113,21 @@ public static class DatabaseSeedHelper
                 ('THE019', NULL, 'Available'),
                 ('THE020', NULL, 'Available');
 
-                -- 7. Hồ sơ khách hàng đăng ký Vé tháng mẫu
                 INSERT OR IGNORE INTO Customers (CustomerId, FullName, Phone, IdentityCard, CreatedAt) VALUES
                 (1, 'Nguyễn Văn An', '0909111222', '079204001111', datetime('now', 'localtime')),
                 (2, 'Trần Thị Bình', '0909333444', '079204002222', datetime('now', 'localtime'));
 
-                -- 8. Danh sách Vé tháng còn hạn (51H-999.99 và 59P2-345.67)
                 INSERT OR IGNORE INTO MonthlyPasses
                 (PassId, CustomerId, LicensePlate, VehicleTypeId, VehicleBrandColor, StartDate, EndDate, Status)
                 VALUES
                 (1, 1, '51H-999.99', 'OTO', 'Mazda CX-5 Trắng', date('now', '-10 days'), date('now', '+20 days'), 'Active'),
                 (2, 2, '59P2-345.67', 'XEMAY', 'Honda Vision Đen', date('now', '-5 days'), date('now', '+25 days'), 'Active');
 
-                -- 9. Ca trực đang mở của nhân viên
                 INSERT OR IGNORE INTO WorkShifts
                 (ShiftId, UserId, ShiftName, StartTime, EndTime, TotalVehiclesIn, TotalVehiclesOut, TotalRevenue, Status)
                 VALUES
                 (1, 1, 'Ca Sáng', datetime('now', 'localtime', '-4 hours'), NULL, 3, 0, 0, 'Open');
 
-                -- 10. Ba lượt xe đang đỗ trong bãi (Status = 'Parking')
                 INSERT OR IGNORE INTO ParkingSessions
                 (
                     SessionId,
@@ -185,9 +166,26 @@ public static class DatabaseSeedHelper
         }
     }
 
-    /// <summary>
-    /// Xóa sạch dữ liệu cũ và nạp lại ngay bộ dữ liệu test khởi tạo chuẩn.
-    /// </summary>
+    // Hàm kiểm tra nếu bảng danh mục đang trống thì mới nạp dữ liệu mẫu
+    public static void SeedTestDataIfEmpty()
+    {
+        using (SqliteConnection connection = SqliteDbContext.GetConnection())
+        {
+            using SqliteCommand checkCmd = connection.CreateCommand();
+            checkCmd.CommandText = "SELECT COUNT(*) FROM VehicleTypes;";
+            object? scalar = checkCmd.ExecuteScalar();
+            long count = scalar != null && scalar != DBNull.Value ? Convert.ToInt64(scalar) : 0;
+
+            if (count > 0)
+            {
+                return;
+            }
+        }
+
+        SeedTestData();
+    }
+
+    // Hàm xóa toàn bộ dữ liệu cũ và nạp lại ngay bộ dữ liệu khởi tạo chuẩn
     public static void ResetAndSeedDatabase()
     {
         ClearAllData();
