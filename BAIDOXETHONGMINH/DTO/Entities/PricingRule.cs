@@ -1,8 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng PricingRules: Cấu hình bảng giá đỗ xe theo từng loại phương tiện
-/// </summary>
 public class PricingRule
 {
     public int RuleId { get; set; }

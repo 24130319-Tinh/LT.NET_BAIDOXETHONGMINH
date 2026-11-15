@@ -1,8 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng ParkingZones: Khu vực đỗ xe trong bãi (VD: Khu A - Xe máy, Khu B - Ô tô)
-/// </summary>
 public class ParkingZone
 {
     public string ZoneId { get; set; } = string.Empty;

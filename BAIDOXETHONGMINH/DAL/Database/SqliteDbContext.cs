@@ -2,21 +2,23 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
 
-/// <summary>
-/// Quản lý kết nối và khởi tạo cấu trúc 12 bảng cho CSDL SQLite (smart_parking.db)
-/// </summary>
 public static class SqliteDbContext
 {
-    /// <summary>
-    /// Đường dẫn tới file vật lý DAL/Database/smart_parking.db
-    /// </summary>
+    public static async Task InitializeDatabaseAsync()
+    {
+        await SqliteHelper.ExecuteAsync(GetSchemaSql());
+        await SqliteHelper.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS AppSettings (SettingKey TEXT PRIMARY KEY, SettingValue TEXT NOT NULL);
+            INSERT OR IGNORE INTO Users (Username, PasswordHash, FullName, Phone, IsActive)
+            VALUES ('local', '', 'Nhân viên tại máy', '', 0);
+            """);
+    }
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
 
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";
 
     private static string ResolveDatabasePath()
     {
-        // Ưu tiên trỏ trực tiếp tới file DAL/Database/smart_parking.db trong thư mục Project khi chạy Debug/Release
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         DirectoryInfo? dir = new DirectoryInfo(baseDir);
 
@@ -37,15 +39,11 @@ public static class SqliteDbContext
             dir = dir.Parent;
         }
 
-        // Dự phòng nếu chạy bản đóng gói độc lập
         string fallbackDir = Path.Combine(baseDir, "DAL", "Database");
         Directory.CreateDirectory(fallbackDir);
         return Path.Combine(fallbackDir, "smart_parking.db");
     }
 
-    /// <summary>
-    /// Mở kết nối SQLite đã bật kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
-    /// </summary>
     public static SqliteConnection GetConnection()
     {
         SqliteConnection connection = new SqliteConnection(ConnectionString);
@@ -58,9 +56,6 @@ public static class SqliteDbContext
         return connection;
     }
 
-    /// <summary>
-    /// Đảm bảo file smart_parking.db có đủ cấu trúc 12 bảng (không tự nạp dữ liệu mẫu)
-    /// </summary>
     public static void InitializeDatabase()
     {
         using SqliteConnection connection = GetConnection();

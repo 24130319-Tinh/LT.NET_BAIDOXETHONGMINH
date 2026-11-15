@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class SearchReportForm
@@ -58,7 +59,6 @@ partial class SearchReportForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -78,7 +78,6 @@ partial class SearchReportForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 3 Rows (KPI Cards, Filter Bar, History Table)
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 1;
@@ -90,7 +89,6 @@ partial class SearchReportForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Row 1: 4 KPI Cards
         tlpKpiRow.Dock = DockStyle.Fill;
         tlpKpiRow.ColumnCount = 4;
         tlpKpiRow.RowCount = 1;
@@ -107,7 +105,6 @@ partial class SearchReportForm
         tlpKpiRow.Controls.Add(pnlKpi3, 2, 0);
         tlpKpiRow.Controls.Add(pnlKpi4, 3, 0);
 
-        // Row 2: Filter Card
         pnlFilterCard.Size = new Size(988, 76);
         pnlFilterCard.Dock = DockStyle.Fill;
         pnlFilterCard.BackColor = Color.White;
@@ -194,7 +191,6 @@ partial class SearchReportForm
         pnlFilterCard.Controls.Add(btnSearch);
         pnlFilterCard.Controls.Add(btnExportCsv);
 
-        // Row 3: History Grid Card
         pnlGridCard.Dock = DockStyle.Fill;
         pnlGridCard.BackColor = Color.White;
         pnlGridCard.Margin = new Padding(6);

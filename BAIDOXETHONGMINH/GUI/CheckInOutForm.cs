@@ -1,14 +1,14 @@
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// Component UI Bàn điều khiển Xe Vào / Xe Ra (Tất cả khung hình chữ nhật đều được bo tròn góc)
-/// </summary>
 public partial class CheckInOutForm : Form
 {
-    private decimal _currentBaseFee = 0m;
+    private readonly ParkingService _parking = new();
+    private CheckoutQuote? _quote;
+    private bool _checkoutBusy;
+    private int _quoteVersion;
 
     [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
     private static extern IntPtr CreateRoundRectRgn(
@@ -21,22 +21,23 @@ public partial class CheckInOutForm : Form
     {
         InitializeComponent();
         SetupAllRoundedRectangles();
-        cboSearchSession.SelectedIndex = 0;
+        cboSearchSession.Items.Clear();
+    cboSearchSession.AutoCompleteSource = AutoCompleteSource.ListItems;
+cboSearchSession.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        ClearCheckout();
+        Disposed += (_, _) => pnlSavedPhotoInner.BackgroundImage?.Dispose();
+        chkLostCard.Text = "Mất thẻ (phạt theo bảng giá, lập biên bản)";
+        Shown += async (_, _) => await Dialogs.RunAsync(LoadCheckoutAsync);
     }
 
-    /// <summary>
-    /// Bo tròn tất cả các khung hình chữ nhật / hình vuông (Card, Ô nhập TextBox, Ô chọn ComboBox, Khung ảnh, Nút bấm)
-    /// </summary>
     private void SetupAllRoundedRectangles()
     {
         Color slateBorder = Color.FromArgb(148, 163, 184);
         Color cardBorder = Color.FromArgb(203, 213, 225);
 
-        // 1. Hai khung lớn Làn Vào & Làn Ra
         AttachRoundedFrame(pnlCheckIn, 18, cardBorder);
         AttachRoundedFrame(pnlCheckOut, 18, cardBorder);
 
-        // 2. Các ô nhập liệu & chọn danh sách (TextBox / ComboBox bọc trong Panel bo tròn)
         AttachRoundedFrame(pnlImagePathBox, 10, slateBorder);
         AttachRoundedFrame(pnlPlateInBox, 10, slateBorder);
         AttachRoundedFrame(pnlVehicleTypeInBox, 10, slateBorder);
@@ -44,7 +45,6 @@ public partial class CheckInOutForm : Form
         AttachRoundedFrame(pnlSlotInBox, 10, slateBorder);
         AttachRoundedFrame(pnlSearchSessionBox, 10, slateBorder);
 
-        // 3. Các khung thông tin, đối chiếu ảnh, mất thẻ, tổng tiền
         AttachRoundedFrame(lblShortcutBadge, 10, slateBorder);
         AttachRoundedFrame(pnlPassStatusBanner, 12, Color.FromArgb(147, 197, 253));
         AttachRoundedFrame(pnlSavedPhotoCard, 14, cardBorder);
@@ -53,16 +53,12 @@ public partial class CheckInOutForm : Form
         AttachRoundedFrame(pnlLostCardBox, 12, cardBorder);
         AttachRoundedFrame(pnlTotalBilling, 14, Color.FromArgb(110, 231, 183));
 
-        // 4. Các nút bấm
         AttachRoundedFrame(btnBrowseImage, 10, slateBorder);
         AttachRoundedFrame(btnSubmitCheckIn, 12, Color.FromArgb(37, 99, 235));
         AttachRoundedFrame(btnResetCheckIn, 12, slateBorder);
         AttachRoundedFrame(btnSubmitCheckOut, 12, Color.FromArgb(5, 150, 105));
     }
 
-    /// <summary>
-    /// Cắt vùng hiển thị bo tròn (Region) + Vẽ đường viền bo tròn khử răng cưa (AntiAlias)
-    /// </summary>
     private static void AttachRoundedFrame(Control control, int radius, Color borderColor)
     {
         void UpdateRegion()
@@ -106,9 +102,6 @@ public partial class CheckInOutForm : Form
         return path;
     }
 
-    /// <summary>
-    /// Vẽ khung viền nét đứt bo tròn và biểu tượng hình ảnh bo tròn khi chưa chọn file ảnh
-    /// </summary>
     private void PicVehicleIn_Paint(object? sender, PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -131,7 +124,6 @@ public partial class CheckInOutForm : Form
 
         if (picVehicleIn.Image != null) return;
 
-        // Vẽ icon bức ảnh (khung bo tròn) ở giữa
         int cx = picVehicleIn.Width / 2;
         int cy = picVehicleIn.Height / 2 - 18;
         using var iconPen = new Pen(Color.FromArgb(71, 85, 105), 2f);
@@ -223,71 +215,122 @@ public partial class CheckInOutForm : Form
         );
     }
 
-    private void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
+    private async Task LoadCheckoutAsync()
     {
-        chkLostCard.Checked = false;
+        await AppService.InitializeAsync();
+        cboSearchSession.DataSource = await _parking.GetActiveVisitsAsync();
+        if (cboSearchSession.Items.Count == 0) ClearCheckout();
+    }
 
-        switch (cboSearchSession.SelectedIndex)
+    private void ClearCheckout()
+    {
+        _quoteVersion++;
+        _quote = null;
+        btnSubmitCheckOut.Enabled = false;
+        lblOutCardVal.Text = lblOutPlateVal.Text = lblOutTypeSlotVal.Text = "—";
+        lblOutDurationVal.Text = lblOutTicketTypeVal.Text = "—";
+        lblSavedPlate.Text = "Không có xe đang gửi";
+        lblSavedFileName.Text = lblSavedTimeIn.Text = "";
+        pnlSavedPhotoInner.BackgroundImage?.Dispose();
+        pnlSavedPhotoInner.BackgroundImage = null;
+        lblTotalAmount.Text = Fmt.Vnd(0);
+        lblFeeBreakdown.Text = "Chọn lượt gửi xe để tính phí";
+    }
+
+    private async void CboSearchSession_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        await Dialogs.RunAsync(UpdateTotalOutFeeAsync);
+    }
+
+    private async void ChkLostCard_CheckedChanged(object? sender, EventArgs e)
+    {
+        await Dialogs.RunAsync(UpdateTotalOutFeeAsync);
+    }
+
+    private async Task UpdateTotalOutFeeAsync()
+    {
+        int version = ++_quoteVersion;
+        _quote = null;
+        btnSubmitCheckOut.Enabled = false;
+        if (cboSearchSession.SelectedItem is not ParkingVisit visit)
         {
-            case 0:
-                lblOutCardVal.Text = "THE003";
-                lblOutPlateVal.Text = "51H-999.99";
-                lblSavedPlate.Text = "51H-999.99";
-                lblSavedFileName.Text = "oto_51H99999.jpg";
-                lblOutTypeSlotVal.Text = "Ô tô • Ô B-01";
-                lblOutDurationVal.Text = "1h 40p";
-                lblOutTicketTypeVal.Text = "★ Vé tháng (0đ)";
-                _currentBaseFee = 0m;
-                break;
-
-            case 1:
-                lblOutCardVal.Text = "THE002";
-                lblOutPlateVal.Text = "51G-456.78";
-                lblSavedPlate.Text = "51G-456.78";
-                lblSavedFileName.Text = "oto_51G45678.jpg";
-                lblOutTypeSlotVal.Text = "Ô tô • Ô B-02";
-                lblOutDurationVal.Text = "3h 05p (Tính 4h)";
-                lblOutTicketTypeVal.Text = "Vé lượt (20k/h)";
-                _currentBaseFee = 80000m;
-                break;
-
-            default:
-                lblOutCardVal.Text = "THE001";
-                lblOutPlateVal.Text = "59X3-112.23";
-                lblSavedPlate.Text = "59X3-112.23";
-                lblSavedFileName.Text = "xemay_59X3.jpg";
-                lblOutTypeSlotVal.Text = "Xe máy • Ô A-01";
-                lblOutDurationVal.Text = "2h 15p";
-                lblOutTicketTypeVal.Text = "Vé lượt ngày (5k)";
-                _currentBaseFee = 5000m;
-                break;
+            ClearCheckout();
+            return;
         }
-
-        UpdateTotalOutFee();
+        var quote = await _parking.GetQuoteAsync(visit.SessionId, chkLostCard.Checked);
+        if (version != _quoteVersion || IsDisposed) return;
+        _quote = quote;
+        lblOutCardVal.Text = visit.CardCode;
+        lblOutPlateVal.Text = visit.LicensePlate;
+        lblOutTypeSlotVal.Text = $"{visit.TypeName} • {visit.SlotCode}";
+        var duration = quote.ExitTime - visit.CheckInTime;
+        lblOutDurationVal.Text = $"{(int)duration.TotalHours}h {duration.Minutes}p";
+        lblOutTicketTypeVal.Text = visit.IsMonthlyPass ? "Vé tháng" : "Vé lượt";
+        lblSavedTimeIn.Text = $"Vào: {visit.CheckInTime:dd/MM/yyyy HH:mm}";
+        lblSavedFileName.Text = "";
+        lblSavedPlate.Text = visit.LicensePlate;
+        pnlSavedPhotoInner.BackgroundImage?.Dispose();
+        pnlSavedPhotoInner.BackgroundImage = null;
+        if (!string.IsNullOrWhiteSpace(visit.ImagePath) && File.Exists(visit.ImagePath))
+        {
+            try
+            {
+                using var source = Image.FromFile(visit.ImagePath);
+                pnlSavedPhotoInner.BackgroundImage = new Bitmap(source);
+                pnlSavedPhotoInner.BackgroundImageLayout = ImageLayout.Zoom;
+                lblSavedPlate.Text = "";
+            }
+            catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException)
+            {
+                lblSavedFileName.Text = "Không đọc được ảnh đã lưu";
+            }
+        }
+        lblFeeBreakdown.Text = $"Tiền gửi: {Fmt.Money(quote.ParkingFee)} + Phạt: {Fmt.Money(quote.Penalty)}";
+        lblTotalAmount.Text = Fmt.Vnd(quote.Total);
+        btnSubmitCheckOut.Enabled = !_checkoutBusy;
     }
 
-    private void ChkLostCard_CheckedChanged(object? sender, EventArgs e)
+    private async void BtnSubmitCheckOut_Click(object? sender, EventArgs e)
     {
-        UpdateTotalOutFee();
-    }
-
-    private void UpdateTotalOutFee()
-    {
-        decimal penalty = chkLostCard.Checked ? 50000m : 0m;
-        decimal total = _currentBaseFee + penalty;
-
-        lblFeeBreakdown.Text = $"Tiền gửi: {_currentBaseFee:N0}đ + Phạt: {penalty:N0}đ";
-        lblTotalAmount.Text = $"{total:N0} VNĐ";
-    }
-
-    private void BtnSubmitCheckOut_Click(object? sender, EventArgs e)
-    {
-        MessageBox.Show(
-            $"Đã xác nhận thu {lblTotalAmount.Text} và giải phóng chỗ đỗ cho xe {lblOutPlateVal.Text}!",
-            "Cho xe ra bãi",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information
-        );
+        if (_checkoutBusy || cboSearchSession.SelectedItem is not ParkingVisit) return;
+        _checkoutBusy = true;
+        btnSubmitCheckOut.Enabled = false;
+        cboSearchSession.Enabled = chkLostCard.Enabled = false;
+        try
+        {
+            await Dialogs.RunAsync(async () =>
+            {
+                LostCardReport? report = null;
+                bool lost = chkLostCard.Checked;
+                if (lost)
+                {
+                    var fields = Dialogs.Prompt(this, "Biên bản mất thẻ",
+                        ("Họ tên khách", ""), ("Điện thoại", ""), ("CCCD", ""));
+                    if (fields == null) return;
+                    report = new(fields[0], fields[1], fields[2]);
+                    if (fields.Any(string.IsNullOrWhiteSpace))
+                        throw new ServiceException("Hãy nhập đủ thông tin biên bản mất thẻ.");
+                }
+                await UpdateTotalOutFeeAsync();
+                var quote = _quote ?? throw new ServiceException("Hãy chọn lại lượt gửi xe.");
+                if (MessageBox.Show(this,
+                    $"Xe {quote.Visit.LicensePlate} — thẻ {quote.Visit.CardCode}\nThu tiền mặt: {Fmt.Vnd(quote.Total)}\nXác nhận đã đối chiếu xe và nhận đủ tiền?",
+                    "Xác nhận xe ra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                await _parking.CheckoutAsync(quote, lost, report);
+                // Xóa lựa chọn trước khi tải lại để không thể thu trùng nếu tải dữ liệu lỗi.
+                cboSearchSession.DataSource = null;
+                ClearCheckout();
+                chkLostCard.Checked = false;
+                MessageBox.Show(this, $"Đã lưu xe ra và thu {Fmt.Vnd(quote.Total)}.", "Hoàn tất");
+                await LoadCheckoutAsync();
+            });
+        }
+        finally
+        {
+            _checkoutBusy = false;
+            cboSearchSession.Enabled = chkLostCard.Enabled = true;
+            btnSubmitCheckOut.Enabled = _quote != null;
+        }
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

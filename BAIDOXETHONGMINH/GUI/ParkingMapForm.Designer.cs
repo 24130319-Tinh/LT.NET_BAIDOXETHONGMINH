@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class ParkingMapForm
@@ -73,7 +74,6 @@ partial class ParkingMapForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -103,7 +103,6 @@ partial class ParkingMapForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 2 Columns (66% Left Map, 34% Right Info)
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 2;
@@ -114,7 +113,6 @@ partial class ParkingMapForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Left Zones (Zone A + Zone B)
         tlpLeftZones.Dock = DockStyle.Fill;
         tlpLeftZones.ColumnCount = 1;
         tlpLeftZones.RowCount = 2;
@@ -165,7 +163,6 @@ partial class ParkingMapForm
         tlpLeftZones.Controls.Add(pnlZoneA, 0, 0);
         tlpLeftZones.Controls.Add(pnlZoneB, 0, 1);
 
-        // Right Column: Selected Slot Detail + Pricing Config
         tlpRightSide.Dock = DockStyle.Fill;
         tlpRightSide.ColumnCount = 1;
         tlpRightSide.RowCount = 2;
@@ -208,7 +205,6 @@ partial class ParkingMapForm
         pnlSlotDetail.Controls.Add(btnToggleMaint);
         pnlSlotDetail.Controls.Add(lblDetailTitle);
 
-        // Pricing Card
         pnlPricingCard.Dock = DockStyle.Fill;
         pnlPricingCard.BackColor = Color.White;
         pnlPricingCard.Margin = new Padding(6);
