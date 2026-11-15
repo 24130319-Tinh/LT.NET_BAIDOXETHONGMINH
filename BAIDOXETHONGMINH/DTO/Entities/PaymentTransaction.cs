@@ -1,5 +1,10 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
+/// <summary>
+/// Bảng PaymentTransactions: Lịch sử giao dịch thu tiền
+/// TransactionType: "ParkingFee" (Tiền gửi xe), "MonthlyPassNew" (Đăng ký vé tháng),
+///                  "MonthlyPassRenew" (Gia hạn vé tháng), "LostCardPenalty" (Phạt mất thẻ)
+/// </summary>
 public class PaymentTransaction
 {
     public int TransactionId { get; set; }

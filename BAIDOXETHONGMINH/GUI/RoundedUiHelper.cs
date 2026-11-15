@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace BAIDOXETHONGMINH.GUI;
 
+/// <summary>
+/// Tiện ích dùng chung để bo tròn các khung hình chữ nhật (Panel, Button, Label, Input Box) cho toàn bộ các Form
+/// </summary>
 public static class RoundedUiHelper
 {
     public static readonly Color SlateBorder = Color.FromArgb(148, 163, 184);
