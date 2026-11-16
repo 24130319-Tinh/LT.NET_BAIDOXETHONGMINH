@@ -1,8 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng Users: Thông tin tài khoản người quản lý / trực ca
-/// </summary>
 public class User
 {
     public int UserId { get; set; }

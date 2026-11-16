@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class MonthlyPassForm
@@ -85,7 +86,6 @@ partial class MonthlyPassForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -105,7 +105,6 @@ partial class MonthlyPassForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 2 Columns (42% Left Form, 58% Right Table)
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 2;
@@ -116,7 +115,6 @@ partial class MonthlyPassForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Left Card
         pnlLeftForm.Size = new Size(410, 620);
         pnlLeftForm.Dock = DockStyle.Fill;
         pnlLeftForm.BackColor = Color.White;
@@ -213,7 +211,6 @@ partial class MonthlyPassForm
         pnlLeftForm.Controls.Add(btnRegister);
         pnlLeftForm.Controls.Add(btnClear);
 
-        // Right Card: DataGridView
         pnlRightGrid.Size = new Size(560, 620);
         pnlRightGrid.Dock = DockStyle.Fill;
         pnlRightGrid.BackColor = Color.White;

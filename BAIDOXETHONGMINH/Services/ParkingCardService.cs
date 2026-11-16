@@ -1,6 +1,88 @@
+using BAIDOXETHONGMINH.DAL.Repositories;
+using BAIDOXETHONGMINH.DTO.Entities;
+
 namespace BAIDOXETHONGMINH.GUI;
 
 public class ParkingCardService
 {
-    
+    private readonly ParkingRepository _repo = new();
+
+    private static readonly Dictionary<string, string[]> Allowed = new()
+    {
+        [CardStatus.Available] = new[] { CardStatus.InUse, CardStatus.Locked, CardStatus.Lost },
+        [CardStatus.InUse] = new[] { CardStatus.Available, CardStatus.Lost },
+        [CardStatus.Lost] = new[] { CardStatus.Available },
+        [CardStatus.Locked] = new[] { CardStatus.Available, CardStatus.Lost }
+    };
+
+    public async Task<List<ParkingCard>> SearchAsync(string keyword)
+    {
+        var cards = await _repo.GetCardsAsync();
+        keyword = (keyword ?? "").Trim();
+        if (keyword.Length == 0) return cards;
+
+        string plateKey = PlateHelper.Key(keyword);
+        return cards.Where(c =>
+            c.CardCode.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+            (plateKey.Length > 0 && PlateHelper.Key(c.LicensePlate).Contains(plateKey))).ToList();
+    }
+
+    public async Task AddAsync(string cardCode)
+    {
+        cardCode = (cardCode ?? "").Trim().ToUpperInvariant();
+        if (cardCode.Length == 0) throw new ServiceException("Mã thẻ không được để trống.");
+        if (await _repo.GetCardAsync(cardCode) != null) throw new ServiceException($"Thẻ '{cardCode}' đã tồn tại.");
+
+        await _repo.AddCardAsync(new ParkingCard { CardCode = cardCode, Status = CardStatus.Available });
+    }
+
+    public Task IssueAsync(string cardCode, string licensePlate)
+    {
+        string plate = PlateHelper.Clean(licensePlate);
+        if (PlateHelper.Key(plate).Length == 0) throw new ServiceException("Biển số không hợp lệ.");
+        return ChangeStatusAsync(cardCode, CardStatus.InUse, plate);
+    }
+
+    public Task ReturnAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Available, null);
+
+    public Task ReportLostAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Lost, null, keepPlate: true);
+
+    public Task RecoverAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Available, null);
+
+    public Task LockAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Locked, null, keepPlate: true);
+
+    public Task UnlockAsync(string cardCode) => ChangeStatusAsync(cardCode, CardStatus.Available, null);
+
+    public async Task DeleteAsync(string cardCode)
+    {
+        var card = await GetRequiredAsync(cardCode);
+        if (card.Status == CardStatus.InUse) throw new ServiceException("Không xóa được thẻ đang cấp cho xe.");
+        await _repo.DeleteCardAsync(card.CardCode);
+    }
+
+    // Hàm thay đổi trạng thái thẻ xe nhưng chặn báo mất hoặc khóa trực tiếp thẻ đang gắn với xe trong bãi
+    private async Task ChangeStatusAsync(string cardCode, string newStatus, string? plate, bool keepPlate = false)
+    {
+        ParkingCard card = await GetRequiredAsync(cardCode);
+        if ((newStatus == CardStatus.Lost || newStatus == CardStatus.Locked) &&
+            await _repo.IsCardCurrentlyInActiveSessionAsync(card.CardCode))
+        {
+            throw new ServiceException($"Thẻ '{card.CardCode}' đang gắn với xe chưa ra bãi. Hãy xử lý mất thẻ tại màn hình Xe Vào / Ra.");
+        }
+
+        if (!Allowed.TryGetValue(card.Status, out string[]? next) || !next.Contains(newStatus))
+            throw new ServiceException($"Thẻ '{card.CardCode}' đang ở trạng thái '{Fmt.CardText(card.Status)}', không thể chuyển sang '{Fmt.CardText(newStatus)}'.");
+
+        card.Status = newStatus;
+        if (!keepPlate) card.LicensePlate = plate;
+        await _repo.UpdateCardAsync(card);
+    }
+
+    private async Task<ParkingCard> GetRequiredAsync(string cardCode)
+    {
+        string code = (cardCode ?? "").Trim().ToUpperInvariant();
+        var card = await _repo.GetCardAsync(code);
+        if (card == null) throw new ServiceException($"Không tìm thấy thẻ '{cardCode}'.");
+        return card;
+    }
 }

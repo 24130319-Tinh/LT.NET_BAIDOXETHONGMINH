@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class CustomerForm
@@ -18,6 +19,7 @@ partial class CustomerForm
     private Panel pnlCccdBox = null!;
     private TextBox txtCccd = null!;
     private Button btnAddCustomer = null!;
+    private Button btnClearCustomer = null!;
     private Button btnUpdateCustomer = null!;
     private Button btnDeleteCustomer = null!;
 
@@ -52,6 +54,7 @@ partial class CustomerForm
         pnlCccdBox = new Panel();
         txtCccd = new TextBox();
         btnAddCustomer = new Button();
+        btnClearCustomer = new Button();
         btnUpdateCustomer = new Button();
         btnDeleteCustomer = new Button();
 
@@ -65,7 +68,6 @@ partial class CustomerForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -85,7 +87,6 @@ partial class CustomerForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 2 Columns
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 2;
@@ -96,7 +97,6 @@ partial class CustomerForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Left Card
         pnlLeftForm.Size = new Size(370, 620);
         pnlLeftForm.Dock = DockStyle.Fill;
         pnlLeftForm.BackColor = Color.White;
@@ -119,7 +119,7 @@ partial class CustomerForm
 
         btnAddCustomer.Text = "Thêm Khách Hàng";
         btnAddCustomer.Location = new Point(18, 282);
-        btnAddCustomer.Size = new Size(330, 42);
+        btnAddCustomer.Size = new Size(210, 42);
         btnAddCustomer.FlatStyle = FlatStyle.Flat;
         btnAddCustomer.FlatAppearance.BorderSize = 0;
         btnAddCustomer.BackColor = Color.FromArgb(37, 99, 235);
@@ -127,6 +127,16 @@ partial class CustomerForm
         btnAddCustomer.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
         btnAddCustomer.Cursor = Cursors.Hand;
         btnAddCustomer.Click += BtnAddCustomer_Click;
+
+        btnClearCustomer.Text = "Làm mới";
+        btnClearCustomer.Location = new Point(236, 282);
+        btnClearCustomer.Size = new Size(112, 42);
+        btnClearCustomer.FlatStyle = FlatStyle.Flat;
+        btnClearCustomer.FlatAppearance.BorderSize = 0;
+        btnClearCustomer.BackColor = Color.FromArgb(241, 245, 249);
+        btnClearCustomer.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        btnClearCustomer.Cursor = Cursors.Hand;
+        btnClearCustomer.Click += BtnClearCustomer_Click;
 
         btnUpdateCustomer.Text = "Cập Nhật Thông Tin";
         btnUpdateCustomer.Location = new Point(18, 334);
@@ -151,10 +161,10 @@ partial class CustomerForm
 
         pnlLeftForm.Controls.Add(lblFormHeader);
         pnlLeftForm.Controls.Add(btnAddCustomer);
+        pnlLeftForm.Controls.Add(btnClearCustomer);
         pnlLeftForm.Controls.Add(btnUpdateCustomer);
         pnlLeftForm.Controls.Add(btnDeleteCustomer);
 
-        // Right Card
         pnlRightGrid.Size = new Size(600, 620);
         pnlRightGrid.Dock = DockStyle.Fill;
         pnlRightGrid.BackColor = Color.White;

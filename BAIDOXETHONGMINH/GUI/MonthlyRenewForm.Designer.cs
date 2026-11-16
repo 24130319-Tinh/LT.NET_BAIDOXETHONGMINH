@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class MonthlyRenewForm
@@ -85,7 +86,6 @@ partial class MonthlyRenewForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -105,7 +105,6 @@ partial class MonthlyRenewForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 2 Columns (58% Left Table, 42% Right Actions)
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 2;
@@ -116,7 +115,6 @@ partial class MonthlyRenewForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Left Table Panel
         pnlLeftTable.Size = new Size(560, 620);
         pnlLeftTable.Dock = DockStyle.Fill;
         pnlLeftTable.BackColor = Color.White;
@@ -150,7 +148,6 @@ partial class MonthlyRenewForm
         pnlLeftTable.Controls.Add(pnlSearchBox);
         pnlLeftTable.Controls.Add(dgvPasses);
 
-        // Right Column (2 stacked cards)
         tlpRightActions.Dock = DockStyle.Fill;
         tlpRightActions.ColumnCount = 1;
         tlpRightActions.RowCount = 2;
@@ -158,7 +155,6 @@ partial class MonthlyRenewForm
         tlpRightActions.RowStyles.Add(new RowStyle(SizeType.Percent, 60F));
         tlpRightActions.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
 
-        // Card 1: Gia hạn
         pnlRenewCard.Size = new Size(410, 360);
         pnlRenewCard.Dock = DockStyle.Fill;
         pnlRenewCard.BackColor = Color.White;
@@ -170,9 +166,9 @@ partial class MonthlyRenewForm
         lblRenewTitle.Location = new Point(18, 16);
         lblRenewTitle.AutoSize = true;
 
-        AddInfoLine(pnlRenewCard, "Mã vé & Biển số:", out lblSelPassCode, "MP-01 (51H-999.99)", 50);
-        AddInfoLine(pnlRenewCard, "Chủ xe:", out lblSelOwner, "Trần Minh Hoàng", 78);
-        AddInfoLine(pnlRenewCard, "Ngày hết hạn cũ:", out lblSelOldEnd, "01/11/2026", 106);
+        AddInfoLine(pnlRenewCard, "Mã vé & Biển số:", out lblSelPassCode, "—", 50);
+        AddInfoLine(pnlRenewCard, "Chủ xe:", out lblSelOwner, "—", 78);
+        AddInfoLine(pnlRenewCard, "Ngày hết hạn cũ:", out lblSelOldEnd, "—", 106);
 
         var lblMo = new Label
         {
@@ -205,8 +201,8 @@ partial class MonthlyRenewForm
         pnlRenewSummary.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         pnlRenewSummary.BackColor = Color.FromArgb(236, 253, 245);
 
-        AddInfoLine(pnlRenewSummary, "Ngày hết hạn mới:", out lblNewEndVal, "01/12/2026", 10);
-        AddInfoLine(pnlRenewSummary, "Số tiền thu gia hạn:", out lblRenewFeeVal, "1.200.000 VNĐ", 36);
+        AddInfoLine(pnlRenewSummary, "Ngày hết hạn mới:", out lblNewEndVal, "—", 10);
+        AddInfoLine(pnlRenewSummary, "Số tiền thu gia hạn:", out lblRenewFeeVal, "—", 36);
         pnlRenewCard.Controls.Add(pnlRenewSummary);
 
         btnConfirmRenew.Text = "Xác Nhận Gia Hạn & Thu Phí";
@@ -223,7 +219,6 @@ partial class MonthlyRenewForm
         pnlRenewCard.Controls.Add(lblRenewTitle);
         pnlRenewCard.Controls.Add(btnConfirmRenew);
 
-        // Card 2: Cập nhật / Hủy vé
         pnlUpdateCard.Size = new Size(410, 240);
         pnlUpdateCard.Dock = DockStyle.Fill;
         pnlUpdateCard.BackColor = Color.White;
@@ -239,18 +234,22 @@ partial class MonthlyRenewForm
 
         pnlUpdPhoneBox.Location = new Point(18, 70);
         pnlUpdPhoneBox.Size = new Size(180, 34);
+        pnlUpdPhoneBox.BackColor = Color.White;
         pnlUpdPhoneBox.Padding = new Padding(10, 7, 10, 5);
         txtUpdPhone.Dock = DockStyle.Fill;
         txtUpdPhone.BorderStyle = BorderStyle.None;
-        txtUpdPhone.Text = "0908123456";
+        txtUpdPhone.Text = string.Empty;
+        txtUpdPhone.Enabled = false;
         pnlUpdPhoneBox.Controls.Add(txtUpdPhone);
 
         pnlUpdBrandBox.Location = new Point(210, 70);
         pnlUpdBrandBox.Size = new Size(182, 34);
+        pnlUpdBrandBox.BackColor = Color.White;
         pnlUpdBrandBox.Padding = new Padding(10, 7, 10, 5);
         txtUpdBrand.Dock = DockStyle.Fill;
         txtUpdBrand.BorderStyle = BorderStyle.None;
-        txtUpdBrand.Text = "Mazda CX-5 Trắng";
+        txtUpdBrand.Text = string.Empty;
+        txtUpdBrand.Enabled = false;
         pnlUpdBrandBox.Controls.Add(txtUpdBrand);
 
         btnSaveUpdate.Text = "Lưu thay đổi";
@@ -261,7 +260,7 @@ partial class MonthlyRenewForm
         btnSaveUpdate.BackColor = Color.FromArgb(241, 245, 249);
         btnSaveUpdate.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         btnSaveUpdate.Cursor = Cursors.Hand;
-        btnSaveUpdate.Click += (s, e) => MessageBox.Show("Đã cập nhật thông tin vé tháng!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        btnSaveUpdate.Click += BtnSaveUpdate_Click;
 
         btnCancelPass.Text = "Hủy vé";
         btnCancelPass.Location = new Point(268, 120);
@@ -272,7 +271,7 @@ partial class MonthlyRenewForm
         btnCancelPass.ForeColor = Color.FromArgb(225, 29, 72);
         btnCancelPass.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         btnCancelPass.Cursor = Cursors.Hand;
-        btnCancelPass.Click += (s, e) => MessageBox.Show("Đã chuyển trạng thái vé sang Đã hủy!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        btnCancelPass.Click += BtnCancelPass_Click;
 
         pnlUpdateCard.Controls.Add(lblUpdateTitle);
         pnlUpdateCard.Controls.Add(lblPh);

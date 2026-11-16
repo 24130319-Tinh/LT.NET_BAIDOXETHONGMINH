@@ -1,3 +1,4 @@
+﻿#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class CheckInOutForm
@@ -11,7 +12,6 @@ partial class CheckInOutForm
 
     private TableLayoutPanel tlpMainColumns = null!;
 
-    // Cột trái: Làn Vào
     private Panel pnlCheckIn = null!;
     private Label lblCheckInHeader = null!;
     private PictureBox picVehicleIn = null!;
@@ -30,14 +30,13 @@ partial class CheckInOutForm
     private ComboBox cboCardIn = null!;
     private Label lblSlotIn = null!;
     private Panel pnlSlotInBox = null!;
-    private TextBox txtSlotIn = null!;
+    private ComboBox cboSlotIn = null!;
     private Panel pnlPassStatusBanner = null!;
     private Label lblPassStatusIn = null!;
     private Label lblPassTestHint = null!;
     private Button btnSubmitCheckIn = null!;
     private Button btnResetCheckIn = null!;
 
-    // Cột phải: Làn Ra
     private Panel pnlCheckOut = null!;
     private Label lblCheckOutHeader = null!;
     private Panel pnlSearchSessionBox = null!;
@@ -46,6 +45,7 @@ partial class CheckInOutForm
     private Panel pnlSavedPhotoCard = null!;
     private Label lblSavedPhotoTitle = null!;
     private Panel pnlSavedPhotoInner = null!;
+    private PictureBox picVehicleOut = null!;
     private Label lblSavedFileName = null!;
     private Label lblSavedPlate = null!;
     private Label lblSavedTimeIn = null!;
@@ -58,12 +58,16 @@ partial class CheckInOutForm
     private Label lblOutTicketTypeVal = null!;
     private Panel pnlLostCardBox = null!;
     private CheckBox chkLostCard = null!;
+    private Label lblLostCardCccd = null!;
+    private Panel pnlLostCardCccdBox = null!;
+    private TextBox txtLostCardCccd = null!;
     private Panel pnlTotalBilling = null!;
     private Label lblTotalTitle = null!;
     private Label lblFeeBreakdown = null!;
     private Label lblTotalAmount = null!;
     private Button btnSubmitCheckOut = null!;
 
+    // Hàm giải phóng tài nguyên giao diện của CheckInOutForm khi đóng
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -73,6 +77,7 @@ partial class CheckInOutForm
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo và bố trí toàn bộ các điều khiển giao diện cho Làn Vào và Làn Ra
     private void InitializeComponent()
     {
         pnlHeader = new Panel();
@@ -99,7 +104,7 @@ partial class CheckInOutForm
         cboCardIn = new ComboBox();
         lblSlotIn = new Label();
         pnlSlotInBox = new Panel();
-        txtSlotIn = new TextBox();
+        cboSlotIn = new ComboBox();
         pnlPassStatusBanner = new Panel();
         lblPassStatusIn = new Label();
         lblPassTestHint = new Label();
@@ -114,6 +119,7 @@ partial class CheckInOutForm
         pnlSavedPhotoCard = new Panel();
         lblSavedPhotoTitle = new Label();
         pnlSavedPhotoInner = new Panel();
+        picVehicleOut = new PictureBox();
         lblSavedFileName = new Label();
         lblSavedPlate = new Label();
         lblSavedTimeIn = new Label();
@@ -126,6 +132,9 @@ partial class CheckInOutForm
         lblOutTicketTypeVal = new Label();
         pnlLostCardBox = new Panel();
         chkLostCard = new CheckBox();
+        lblLostCardCccd = new Label();
+        pnlLostCardCccdBox = new Panel();
+        txtLostCardCccd = new TextBox();
         pnlTotalBilling = new Panel();
         lblTotalTitle = new Label();
         lblFeeBreakdown = new Label();
@@ -136,9 +145,6 @@ partial class CheckInOutForm
 
         ClientSize = new Size(1020, 720);
 
-        // 
-        // pnlHeader (Thanh tiêu đề trên cùng)
-        // 
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -169,9 +175,6 @@ partial class CheckInOutForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // 
-        // tlpMainColumns (Chia 2 cột 50% - 50%)
-        // 
         tlpMainColumns.Size = new Size(1020, 652);
         tlpMainColumns.Dock = DockStyle.Fill;
         tlpMainColumns.ColumnCount = 2;
@@ -182,9 +185,6 @@ partial class CheckInOutForm
         tlpMainColumns.Padding = new Padding(10, 4, 10, 12);
         tlpMainColumns.BackColor = Color.FromArgb(248, 250, 252);
 
-        // =========================================================
-        // CỘT TRÁI: LÀN VÀO — GHI NHẬN XE VÀO BÃI
-        // =========================================================
         pnlCheckIn.Size = new Size(480, 620);
         pnlCheckIn.Dock = DockStyle.Fill;
         pnlCheckIn.BackColor = Color.White;
@@ -205,7 +205,6 @@ partial class CheckInOutForm
         picVehicleIn.Paint += PicVehicleIn_Paint;
         picVehicleIn.Click += BtnBrowseImage_Click;
 
-        // Khung bo tròn bọc ô đường dẫn ảnh
         pnlImagePathBox.Location = new Point(18, 223);
         pnlImagePathBox.Size = new Size(302, 34);
         pnlImagePathBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -231,7 +230,6 @@ partial class CheckInOutForm
         btnBrowseImage.Cursor = Cursors.Hand;
         btnBrowseImage.Click += BtnBrowseImage_Click;
 
-        // Bảng 2x2 cho 4 trường nhập thủ công (Tất cả đều bọc trong Panel bo tròn)
         tlpInputsIn.Location = new Point(18, 265);
         tlpInputsIn.Size = new Size(444, 134);
         tlpInputsIn.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -276,8 +274,6 @@ partial class CheckInOutForm
         cboVehicleTypeIn.FlatStyle = FlatStyle.Flat;
         cboVehicleTypeIn.DropDownStyle = ComboBoxStyle.DropDownList;
         cboVehicleTypeIn.Font = new Font("Segoe UI", 9.8F);
-        cboVehicleTypeIn.Items.AddRange(new object[] { "Xe máy (Khu A)", "Ô tô (Khu B)" });
-        cboVehicleTypeIn.SelectedIndex = 0;
         cboVehicleTypeIn.SelectedIndexChanged += CboVehicleTypeIn_SelectedIndexChanged;
         pnlVehicleTypeInBox.Controls.Add(cboVehicleTypeIn);
 
@@ -301,20 +297,18 @@ partial class CheckInOutForm
         cboCardIn.FlatStyle = FlatStyle.Flat;
         cboCardIn.DropDownStyle = ComboBoxStyle.DropDownList;
         cboCardIn.Font = new Font("Consolas", 9.8F);
-        cboCardIn.Items.AddRange(new object[] { "THE008 (Trống)", "THE009 (Trống)", "THE010 (Trống)" });
-        cboCardIn.SelectedIndex = 0;
         pnlCardInBox.Controls.Add(cboCardIn);
 
         pnlSlotInBox.Dock = DockStyle.Fill;
         pnlSlotInBox.Margin = new Padding(8, 4, 0, 4);
         pnlSlotInBox.BackColor = Color.White;
-        pnlSlotInBox.Padding = new Padding(10, 8, 10, 6);
+        pnlSlotInBox.Padding = new Padding(8, 5, 8, 4);
 
-        txtSlotIn.Dock = DockStyle.Fill;
-        txtSlotIn.BorderStyle = BorderStyle.None;
-        txtSlotIn.Font = new Font("Segoe UI", 9.8F, FontStyle.Bold);
-        txtSlotIn.Text = "A-03 (Trống)";
-        pnlSlotInBox.Controls.Add(txtSlotIn);
+        cboSlotIn.Dock = DockStyle.Fill;
+        cboSlotIn.FlatStyle = FlatStyle.Flat;
+        cboSlotIn.DropDownStyle = ComboBoxStyle.DropDownList;
+        cboSlotIn.Font = new Font("Consolas", 9.8F, FontStyle.Bold);
+        pnlSlotInBox.Controls.Add(cboSlotIn);
 
         tlpInputsIn.Controls.Add(lblPlateIn, 0, 0);
         tlpInputsIn.Controls.Add(lblVehicleTypeIn, 1, 0);
@@ -325,7 +319,6 @@ partial class CheckInOutForm
         tlpInputsIn.Controls.Add(pnlCardInBox, 0, 3);
         tlpInputsIn.Controls.Add(pnlSlotInBox, 1, 3);
 
-        // Banner đối chiếu vé tháng (Bo góc)
         pnlPassStatusBanner.Location = new Point(18, 408);
         pnlPassStatusBanner.Size = new Size(444, 40);
         pnlPassStatusBanner.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -335,23 +328,20 @@ partial class CheckInOutForm
         lblPassStatusIn.Text = "Đối chiếu Vé tháng: Chưa nhập biển số";
         lblPassStatusIn.Font = new Font("Segoe UI", 8.8F, FontStyle.Bold);
         lblPassStatusIn.ForeColor = Color.FromArgb(30, 64, 175);
-        lblPassStatusIn.Dock = DockStyle.Left;
-        lblPassStatusIn.AutoSize = false;
-        lblPassStatusIn.Width = 265;
+        lblPassStatusIn.Dock = DockStyle.Fill;
         lblPassStatusIn.TextAlign = ContentAlignment.MiddleLeft;
 
-        lblPassTestHint.Text = "Test mã: 51H-999.99";
+        lblPassTestHint.Text = "Kiểm tra từ CSDL";
         lblPassTestHint.Font = new Font("Consolas", 8.5F, FontStyle.Bold);
         lblPassTestHint.ForeColor = Color.FromArgb(71, 85, 105);
         lblPassTestHint.Dock = DockStyle.Right;
         lblPassTestHint.AutoSize = false;
-        lblPassTestHint.Width = 145;
+        lblPassTestHint.Width = 135;
         lblPassTestHint.TextAlign = ContentAlignment.MiddleRight;
 
-        pnlPassStatusBanner.Controls.Add(lblPassTestHint);
         pnlPassStatusBanner.Controls.Add(lblPassStatusIn);
+        pnlPassStatusBanner.Controls.Add(lblPassTestHint);
 
-        // Nút Lưu Xe Vào & Xóa trắng
         btnSubmitCheckIn.Text = "[F1] Cho Xe Vào Bãi & Lưu CSDL";
         btnSubmitCheckIn.Location = new Point(18, 462);
         btnSubmitCheckIn.Size = new Size(344, 44);
@@ -384,9 +374,6 @@ partial class CheckInOutForm
         pnlCheckIn.Controls.Add(btnSubmitCheckIn);
         pnlCheckIn.Controls.Add(btnResetCheckIn);
 
-        // =========================================================
-        // CỘT PHẢI: LÀN RA — ĐỐI CHIẾU HÌNH & TÍNH TIỀN
-        // =========================================================
         pnlCheckOut.Size = new Size(480, 620);
         pnlCheckOut.Dock = DockStyle.Fill;
         pnlCheckOut.BackColor = Color.White;
@@ -398,7 +385,6 @@ partial class CheckInOutForm
         lblCheckOutHeader.Location = new Point(18, 16);
         lblCheckOutHeader.AutoSize = true;
 
-        // Khung bo tròn bọc ComboBox tìm kiếm lượt vào
         pnlSearchSessionBox.Location = new Point(18, 46);
         pnlSearchSessionBox.Size = new Size(444, 36);
         pnlSearchSessionBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -409,16 +395,9 @@ partial class CheckInOutForm
         cboSearchSession.FlatStyle = FlatStyle.Flat;
         cboSearchSession.DropDownStyle = ComboBoxStyle.DropDownList;
         cboSearchSession.Font = new Font("Consolas", 9.2F);
-        cboSearchSession.Items.AddRange(new object[]
-        {
-            "Nhập mã thẻ: THE003 — Biển số 51H-999.99 (Ô tô • Vé tháng)",
-            "Nhập mã thẻ: THE002 — Biển số 51G-456.78 (Ô tô • Vé lượt 3h05p)",
-            "Nhập mã thẻ: THE001 — Biển số 59X3-112.23 (Xe máy • Vé lượt ngày)"
-        });
         cboSearchSession.SelectedIndexChanged += CboSearchSession_SelectedIndexChanged;
         pnlSearchSessionBox.Controls.Add(cboSearchSession);
 
-        // Khung 2 cột đối chiếu Hình đã lưu & Thông tin lượt vào
         tlpCompareOut.Location = new Point(18, 94);
         tlpCompareOut.Size = new Size(444, 175);
         tlpCompareOut.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -440,7 +419,7 @@ partial class CheckInOutForm
         lblSavedPhotoTitle.Height = 28;
         lblSavedPhotoTitle.TextAlign = ContentAlignment.MiddleCenter;
 
-        lblSavedTimeIn.Text = "Vào: 29/10 07:15:00";
+        lblSavedTimeIn.Text = "Vào: —";
         lblSavedTimeIn.Font = new Font("Segoe UI", 8.5F);
         lblSavedTimeIn.ForeColor = Color.FromArgb(71, 85, 105);
         lblSavedTimeIn.Dock = DockStyle.Bottom;
@@ -451,19 +430,25 @@ partial class CheckInOutForm
         pnlSavedPhotoInner.BackColor = Color.White;
         pnlSavedPhotoInner.Padding = new Padding(6);
 
-        lblSavedFileName.Text = "oto_51H99999.jpg";
+        picVehicleOut.Dock = DockStyle.Fill;
+        picVehicleOut.SizeMode = PictureBoxSizeMode.Zoom;
+        picVehicleOut.BackColor = Color.White;
+        picVehicleOut.Visible = false;
+
+        lblSavedFileName.Text = "Không có xe đang đỗ";
         lblSavedFileName.Font = new Font("Consolas", 9F);
         lblSavedFileName.ForeColor = Color.FromArgb(100, 116, 139);
         lblSavedFileName.Dock = DockStyle.Top;
         lblSavedFileName.Height = 40;
         lblSavedFileName.TextAlign = ContentAlignment.BottomCenter;
 
-        lblSavedPlate.Text = "51H-999.99";
+        lblSavedPlate.Text = "—";
         lblSavedPlate.Font = new Font("Consolas", 10F, FontStyle.Bold);
         lblSavedPlate.ForeColor = Color.FromArgb(15, 23, 42);
         lblSavedPlate.Dock = DockStyle.Fill;
         lblSavedPlate.TextAlign = ContentAlignment.TopCenter;
 
+        pnlSavedPhotoInner.Controls.Add(picVehicleOut);
         pnlSavedPhotoInner.Controls.Add(lblSavedPlate);
         pnlSavedPhotoInner.Controls.Add(lblSavedFileName);
 
@@ -471,7 +456,6 @@ partial class CheckInOutForm
         pnlSavedPhotoCard.Controls.Add(lblSavedPhotoTitle);
         pnlSavedPhotoCard.Controls.Add(lblSavedTimeIn);
 
-        // Cột nhỏ bên phải: Thông tin chi tiết
         pnlSessionDetailsCard.Dock = DockStyle.Fill;
         pnlSessionDetailsCard.BackColor = Color.White;
         pnlSessionDetailsCard.Margin = new Padding(6, 0, 0, 0);
@@ -487,32 +471,56 @@ partial class CheckInOutForm
             tlpDetailsRows.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
         }
 
-        AddDetailRowToTable(tlpDetailsRows, 0, "Mã thẻ:", out lblOutCardVal, "THE003", false);
-        AddDetailRowToTable(tlpDetailsRows, 1, "Biển số vào:", out lblOutPlateVal, "51H-999.99", false);
-        AddDetailRowToTable(tlpDetailsRows, 2, "Loại / Ô đỗ:", out lblOutTypeSlotVal, "Ô tô • Ô B-01", false);
-        AddDetailRowToTable(tlpDetailsRows, 3, "Thời gian đỗ:", out lblOutDurationVal, "1h 40p", false);
-        AddDetailRowToTable(tlpDetailsRows, 4, "Loại vé:", out lblOutTicketTypeVal, "★ Vé tháng (0đ)", true);
+        AddDetailRowToTable(tlpDetailsRows, 0, "Mã thẻ:", out lblOutCardVal, "—", false);
+        AddDetailRowToTable(tlpDetailsRows, 1, "Biển số vào:", out lblOutPlateVal, "—", false);
+        AddDetailRowToTable(tlpDetailsRows, 2, "Loại / Ô đỗ:", out lblOutTypeSlotVal, "—", false);
+        AddDetailRowToTable(tlpDetailsRows, 3, "Thời gian đỗ:", out lblOutDurationVal, "—", false);
+        AddDetailRowToTable(tlpDetailsRows, 4, "Loại vé:", out lblOutTicketTypeVal, "—", true);
 
         pnlSessionDetailsCard.Controls.Add(tlpDetailsRows);
 
         tlpCompareOut.Controls.Add(pnlSavedPhotoCard, 0, 0);
         tlpCompareOut.Controls.Add(pnlSessionDetailsCard, 1, 0);
 
-        // Khung Checkbox Khách mất thẻ
-        pnlLostCardBox.Location = new Point(18, 282);
-        pnlLostCardBox.Size = new Size(444, 44);
+        pnlLostCardBox.Location = new Point(18, 278);
+        pnlLostCardBox.Size = new Size(444, 78);
         pnlLostCardBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         pnlLostCardBox.BackColor = Color.FromArgb(248, 250, 252);
-        pnlLostCardBox.Padding = new Padding(12, 4, 12, 4);
+        pnlLostCardBox.Padding = new Padding(12, 6, 12, 6);
 
         chkLostCard.Text = "Khách mất thẻ (+50.000đ tiền phạt & nhập CCCD biên bản)";
+        chkLostCard.UseMnemonic = false;
         chkLostCard.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        chkLostCard.Dock = DockStyle.Fill;
+        chkLostCard.Location = new Point(12, 8);
+        chkLostCard.Size = new Size(420, 24);
         chkLostCard.CheckedChanged += ChkLostCard_CheckedChanged;
-        pnlLostCardBox.Controls.Add(chkLostCard);
 
-        // Khung Tổng tiền thu
-        pnlTotalBilling.Location = new Point(18, 340);
+        lblLostCardCccd.Text = "Số CCCD biên bản (*):";
+        lblLostCardCccd.Font = new Font("Segoe UI", 8.8F);
+        lblLostCardCccd.ForeColor = Color.FromArgb(71, 85, 105);
+        lblLostCardCccd.Location = new Point(12, 38);
+        lblLostCardCccd.Size = new Size(145, 32);
+        lblLostCardCccd.TextAlign = ContentAlignment.MiddleLeft;
+
+        pnlLostCardCccdBox.Location = new Point(160, 38);
+        pnlLostCardCccdBox.Size = new Size(270, 32);
+        pnlLostCardCccdBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        pnlLostCardCccdBox.BackColor = Color.FromArgb(241, 245, 249);
+        pnlLostCardCccdBox.Padding = new Padding(10, 7, 10, 5);
+
+        txtLostCardCccd.Dock = DockStyle.Fill;
+        txtLostCardCccd.Font = new Font("Consolas", 9.5F);
+        txtLostCardCccd.BorderStyle = BorderStyle.None;
+        txtLostCardCccd.PlaceholderText = "Nhập số CCCD / Ghi chú mất thẻ...";
+        txtLostCardCccd.Enabled = false;
+        txtLostCardCccd.BackColor = Color.FromArgb(241, 245, 249);
+        pnlLostCardCccdBox.Controls.Add(txtLostCardCccd);
+
+        pnlLostCardBox.Controls.Add(chkLostCard);
+        pnlLostCardBox.Controls.Add(lblLostCardCccd);
+        pnlLostCardBox.Controls.Add(pnlLostCardCccdBox);
+
+        pnlTotalBilling.Location = new Point(18, 368);
         pnlTotalBilling.Size = new Size(444, 76);
         pnlTotalBilling.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         pnlTotalBilling.BackColor = Color.FromArgb(236, 253, 245);
@@ -541,9 +549,8 @@ partial class CheckInOutForm
         pnlTotalBilling.Controls.Add(lblTotalTitle);
         pnlTotalBilling.Controls.Add(lblFeeBreakdown);
 
-        // Nút Xác nhận thu tiền
         btnSubmitCheckOut.Text = "[F2] Xác Nhận Thu Tiền & Giải Phóng Chỗ Đỗ";
-        btnSubmitCheckOut.Location = new Point(18, 430);
+        btnSubmitCheckOut.Location = new Point(18, 462);
         btnSubmitCheckOut.Size = new Size(444, 44);
         btnSubmitCheckOut.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         btnSubmitCheckOut.FlatStyle = FlatStyle.Flat;
@@ -564,9 +571,6 @@ partial class CheckInOutForm
         tlpMainColumns.Controls.Add(pnlCheckIn, 0, 0);
         tlpMainColumns.Controls.Add(pnlCheckOut, 1, 0);
 
-        // 
-        // CheckInOutForm
-        // 
         AutoScaleMode = AutoScaleMode.Font;
         FormBorderStyle = FormBorderStyle.None;
         KeyPreview = true;
@@ -576,9 +580,10 @@ partial class CheckInOutForm
         ResumeLayout(false);
     }
 
+    // Hàm tạo và thêm một dòng nhãn tiêu đề - giá trị vào bảng thông tin chi tiết ở cột Làn Ra
     private static void AddDetailRowToTable(TableLayoutPanel table, int row, string labelText, out Label valueLabel, string defaultVal, bool isAccent)
     {
-        var lblTitle = new Label
+        Label lblTitle = new Label
         {
             Text = labelText,
             Font = new Font("Segoe UI", 8.8F),

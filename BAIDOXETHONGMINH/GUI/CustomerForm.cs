@@ -1,3 +1,4 @@
+using BAIDOXETHONGMINH.DTO.Entities;
 namespace BAIDOXETHONGMINH.GUI;
 
 public partial class CustomerForm : Form
@@ -13,11 +14,16 @@ public partial class CustomerForm : Form
         RoundedUiHelper.AttachRoundedFrame(pnlCccdBox, 10, RoundedUiHelper.SlateBorder);
         RoundedUiHelper.AttachRoundedFrame(pnlSearchBox, 10, RoundedUiHelper.SlateBorder);
         RoundedUiHelper.AttachRoundedFrame(btnAddCustomer, 10, Color.FromArgb(37, 99, 235));
+        RoundedUiHelper.AttachRoundedFrame(btnClearCustomer, 10, RoundedUiHelper.SlateBorder);
         RoundedUiHelper.AttachRoundedFrame(btnUpdateCustomer, 10, RoundedUiHelper.SlateBorder);
         RoundedUiHelper.AttachRoundedFrame(btnDeleteCustomer, 10, Color.FromArgb(248, 113, 113));
 
         SetupCustomerGrid();
     }
+
+    private readonly CustomerService _service = AppService.Customers;
+    private bool _saving;
+    private int _searchVersion;
 
     private void SetupCustomerGrid()
     {
@@ -26,45 +32,116 @@ public partial class CustomerForm : Form
         dgvCustomers.Columns.Add("Phone", "Số điện thoại");
         dgvCustomers.Columns.Add("IdentityCard", "Số CCCD");
         dgvCustomers.Columns.Add("CreatedAt", "Ngày đăng ký");
-
-        dgvCustomers.Rows.Add("KH-01", "Trần Minh Hoàng", "0908123456", "079204001234", "01/10/2026");
-        dgvCustomers.Rows.Add("KH-02", "Nguyễn Thị Lan", "0912345678", "079204005678", "15/10/2026");
-        dgvCustomers.Rows.Add("KH-03", "Lê Quốc Bảo", "0987654321", "079204009999", "01/09/2026");
+        Load += async (_, _) => await Dialogs.RunAsync(async () =>
+        {
+            await AppService.InitializeAsync();
+            await RefreshCustomersAsync();
+        });
+        txtSearchCustomer.TextChanged += async (_, _) => await Dialogs.RunAsync(RefreshCustomersAsync);
     }
 
+    private Customer? SelectedCustomer => dgvCustomers.CurrentRow?.Tag as Customer;
+
+    private async Task RefreshCustomersAsync()
+    {
+        int version = ++_searchVersion;
+        int? selectedId = SelectedCustomer?.CustomerId;
+        var customers = await _service.SearchAsync(txtSearchCustomer.Text);
+        if (IsDisposed || version != _searchVersion) return;
+        dgvCustomers.Rows.Clear();
+        foreach (var customer in customers)
+        {
+            int index = dgvCustomers.Rows.Add($"KH-{customer.CustomerId:00}", customer.FullName,
+                customer.Phone, customer.IdentityCard, Fmt.Date(customer.CreatedAt));
+            dgvCustomers.Rows[index].Tag = customer;
+        }
+        var row = dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault(r =>
+            (r.Tag as Customer)?.CustomerId == selectedId) ?? dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault();
+        if (row != null) dgvCustomers.CurrentCell = row.Cells[0];
+        DgvCustomers_SelectionChanged(null, EventArgs.Empty);
+    }
+
+    // Hàm nạp thông tin khách hàng đang chọn lên các ô nhập hoặc xóa trắng khi chưa có dòng chọn
     private void DgvCustomers_SelectionChanged(object? sender, EventArgs e)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        txtFullName.Text = dgvCustomers.CurrentRow.Cells[1].Value?.ToString() ?? "";
-        txtPhone.Text = dgvCustomers.CurrentRow.Cells[2].Value?.ToString() ?? "";
-        txtCccd.Text = dgvCustomers.CurrentRow.Cells[3].Value?.ToString() ?? "";
-    }
-
-    private void BtnAddCustomer_Click(object? sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtFullName.Text) || string.IsNullOrWhiteSpace(txtPhone.Text))
+        Customer? customer = SelectedCustomer;
+        if (customer == null)
         {
-            MessageBox.Show("Vui lòng nhập Họ tên và Số điện thoại khách hàng!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtFullName.Clear();
+            txtPhone.Clear();
+            txtCccd.Clear();
+            btnUpdateCustomer.Enabled = false;
+            btnDeleteCustomer.Enabled = false;
             return;
         }
 
-        string id = $"KH-0{dgvCustomers.Rows.Count + 1}";
-        dgvCustomers.Rows.Add(id, txtFullName.Text.Trim(), txtPhone.Text.Trim(), txtCccd.Text.Trim(), DateTime.Now.ToString("dd/MM/yyyy"));
-        MessageBox.Show($"Đã thêm khách hàng {txtFullName.Text.Trim()} ({id}) thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        txtFullName.Text = customer.FullName;
+        txtPhone.Text = customer.Phone;
+        txtCccd.Text = customer.IdentityCard;
+        btnUpdateCustomer.Enabled = !_saving;
+        btnDeleteCustomer.Enabled = !_saving;
     }
 
-    private void BtnUpdateCustomer_Click(object? sender, EventArgs e)
+    // Hàm xóa trắng các ô nhập liệu để chuẩn bị thêm hồ sơ khách hàng mới
+    private void BtnClearCustomer_Click(object? sender, EventArgs e)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        dgvCustomers.CurrentRow.Cells[1].Value = txtFullName.Text.Trim();
-        dgvCustomers.CurrentRow.Cells[2].Value = txtPhone.Text.Trim();
-        dgvCustomers.CurrentRow.Cells[3].Value = txtCccd.Text.Trim();
-        MessageBox.Show("Đã cập nhật hồ sơ khách hàng!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        dgvCustomers.ClearSelection();
+        txtFullName.Clear();
+        txtPhone.Clear();
+        txtCccd.Clear();
+        btnUpdateCustomer.Enabled = false;
+        btnDeleteCustomer.Enabled = false;
+        txtFullName.Focus();
     }
 
-    private void BtnDeleteCustomer_Click(object? sender, EventArgs e)
+    // Hàm thực thi thao tác lưu CSDL kèm khóa tạm thời các nút trong lúc xử lý
+    private async Task SaveAsync(Func<Task> action)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        dgvCustomers.Rows.Remove(dgvCustomers.CurrentRow);
+        if (_saving) return;
+        _saving = true;
+        btnAddCustomer.Enabled = btnClearCustomer.Enabled = btnUpdateCustomer.Enabled = btnDeleteCustomer.Enabled = false;
+        try { await Dialogs.RunAsync(async () => { await action(); await RefreshCustomersAsync(); }); }
+        finally
+        {
+            _saving = false;
+            if (!IsDisposed)
+            {
+                btnAddCustomer.Enabled = btnClearCustomer.Enabled = true;
+                bool hasSelection = SelectedCustomer != null;
+                btnUpdateCustomer.Enabled = hasSelection;
+                btnDeleteCustomer.Enabled = hasSelection;
+            }
+        }
+    }
+
+    private async void BtnAddCustomer_Click(object? sender, EventArgs e) => await SaveAsync(() =>
+        _service.AddAsync(new Customer { FullName = txtFullName.Text, Phone = txtPhone.Text, IdentityCard = txtCccd.Text }));
+
+    private async void BtnUpdateCustomer_Click(object? sender, EventArgs e)
+    {
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        await SaveAsync(() => _service.UpdateAsync(new Customer
+        {
+            CustomerId = customer.CustomerId, FullName = txtFullName.Text,
+            Phone = txtPhone.Text, IdentityCard = txtCccd.Text
+        }));
+    }
+
+    // Hàm xác nhận trước khi xóa hồ sơ khách hàng đang chọn
+    private async void BtnDeleteCustomer_Click(object? sender, EventArgs e)
+    {
+        Customer? customer = SelectedCustomer;
+        if (customer == null) return;
+
+        DialogResult confirm = MessageBox.Show(
+            $"Bạn có chắc chắn muốn xóa khách hàng '{customer.FullName}' không?",
+            "Xác nhận xóa khách hàng",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question
+        );
+        if (confirm != DialogResult.Yes) return;
+
+        await SaveAsync(() => _service.DeleteAsync(customer.CustomerId));
     }
 }

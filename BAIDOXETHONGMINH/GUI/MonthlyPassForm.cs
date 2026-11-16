@@ -2,7 +2,7 @@ namespace BAIDOXETHONGMINH.GUI;
 
 public partial class MonthlyPassForm : Form
 {
-    public MonthlyPassForm()
+    public MonthlyPassForm(int tabIndex = 0)
     {
         InitializeComponent();
 
@@ -23,6 +23,11 @@ public partial class MonthlyPassForm : Form
         SetupSampleGrid();
     }
 
+    private bool _ready;
+    private bool _saving;
+    private int _feeVersion;
+    private readonly MonthlyPassService _service = AppService.Monthly;
+
     private void SetupSampleGrid()
     {
         dgvMonthlyPasses.Columns.Add("PassCode", "Mã Vé");
@@ -31,39 +36,77 @@ public partial class MonthlyPassForm : Form
         dgvMonthlyPasses.Columns.Add("Vehicle", "Phương tiện");
         dgvMonthlyPasses.Columns.Add("Duration", "Thời hạn");
         dgvMonthlyPasses.Columns.Add("Status", "Trạng thái");
-
-        dgvMonthlyPasses.Rows.Add("MP-01", "51H-999.99", "Trần Minh Hoàng (0908123456)", "Ô tô • Mazda CX-5 Trắng", "01/10/2026 → 01/11/2026", "Sắp hết hạn (3 ngày)");
-        dgvMonthlyPasses.Rows.Add("MP-02", "59P2-345.67", "Nguyễn Thị Lan (0912345678)", "Xe máy • Honda Vision Đỏ", "15/10/2026 → 15/12/2026", "Còn hạn");
-        dgvMonthlyPasses.Rows.Add("MP-03", "59T1-882.10", "Lê Quốc Bảo (0987654321)", "Xe máy • AirBlade Đen", "01/09/2026 → 01/10/2026", "Đã hết hạn");
-    }
-
-    private void RecalcFee()
-    {
-        decimal unit = cboVehicleType.SelectedIndex == 0 ? 150000m : 1200000m;
-        int months = cboMonths.SelectedIndex switch { 1 => 3, 2 => 6, _ => 1 };
-        lblFeeValue.Text = $"{unit * months:N0} VNĐ";
-    }
-
-    private void BtnRegister_Click(object? sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtName.Text) || string.IsNullOrWhiteSpace(txtPlate.Text))
+        Load += async (_, _) => await Dialogs.RunAsync(async () =>
         {
-            MessageBox.Show("Vui lòng nhập đầy đủ Họ tên chủ xe và Biển số xe!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            await AppService.InitializeAsync();
+            cboVehicleType.DisplayMember = "TypeName";
+            cboVehicleType.ValueMember = "VehicleTypeId";
+            cboVehicleType.DataSource = await AppService.Pricing.GetVehicleTypesAsync();
+            _ready = true;
+            RecalcFee();
+            await RefreshPassesAsync();
+        });
+    }
+
+    private async Task RefreshPassesAsync()
+    {
+        var passes = await _service.GetViewsAsync();
+        if (IsDisposed) return;
+        dgvMonthlyPasses.Rows.Clear();
+        foreach (var pass in passes)
+            dgvMonthlyPasses.Rows.Add(pass.Code, pass.LicensePlate, pass.OwnerText,
+                pass.VehicleText, pass.PeriodText, pass.StatusText);
+    }
+
+    private int Months => cboMonths.SelectedIndex switch { 1 => 3, 2 => 6, _ => 1 };
+
+    // Hàm tính lại phí đăng ký vé tháng khi người dùng thay đổi loại xe hoặc số tháng
+    private async void RecalcFee()
+    {
+        if (!_ready) return;
+
+        if (cboVehicleType.SelectedValue is not string typeId)
+        {
+            ++_feeVersion;
+            lblFeeValue.Text = "Chưa chọn loại xe";
             return;
         }
 
-        string code = $"MP-0{dgvMonthlyPasses.Rows.Count + 1}";
-        string plate = txtPlate.Text.Trim().ToUpperInvariant();
-        string type = cboVehicleType.SelectedIndex == 0 ? "Xe máy" : "Ô tô";
-        int months = cboMonths.SelectedIndex switch { 1 => 3, 2 => 6, _ => 1 };
-        string endDate = DateTime.Now.AddMonths(months).ToString("dd/MM/yyyy");
-
-        dgvMonthlyPasses.Rows.Insert(0, code, plate, $"{txtName.Text.Trim()} ({txtPhone.Text.Trim()})",
-            $"{type} • {txtBrand.Text.Trim()}", $"{txtStartDate.Text} → {endDate}", "Còn hạn");
-
-        MessageBox.Show($"Đã đăng ký mới Vé tháng {code} cho xe {plate} thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        int version = ++_feeVersion;
+        try
+        {
+            decimal fee = await _service.GetFeeAsync(typeId, Months);
+            if (!IsDisposed && version == _feeVersion) lblFeeValue.Text = Fmt.Vnd(fee);
+        }
+        catch (Exception)
+        {
+            if (!IsDisposed && version == _feeVersion) lblFeeValue.Text = "Chưa có bảng giá";
+        }
     }
 
+    private async void BtnRegister_Click(object? sender, EventArgs e)
+    {
+        if (_saving || !_ready) return;
+        _saving = true;
+        btnRegister.Enabled = false;
+        try
+        {
+            await Dialogs.RunAsync(async () =>
+            {
+                if (cboVehicleType.SelectedValue is not string typeId)
+                    throw new ServiceException("Hãy chọn loại xe.");
+                var pass = await _service.RegisterAsync(txtName.Text, txtPhone.Text, txtCccd.Text,
+                    txtPlate.Text, typeId, txtBrand.Text, Months);
+                await RefreshPassesAsync();
+                BtnClear_Click(null, EventArgs.Empty);
+                MessageBox.Show($"Đã đăng ký vé MP-{pass.PassId:00} cho xe {pass.LicensePlate}.",
+                    "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            });
+        }
+        finally { _saving = false; if (!IsDisposed) btnRegister.Enabled = true; }
+    }
+
+    // Hàm xóa trắng các ô nhập và đặt lại lựa chọn mặc định trên Form đăng ký vé tháng
     private void BtnClear_Click(object? sender, EventArgs e)
     {
         txtName.Clear();
@@ -71,5 +114,8 @@ public partial class MonthlyPassForm : Form
         txtCccd.Clear();
         txtPlate.Clear();
         txtBrand.Clear();
+        txtStartDate.Text = DateTime.Today.ToString("dd/MM/yyyy");
+        if (cboVehicleType.Items.Count > 0) cboVehicleType.SelectedIndex = 0;
+        if (cboMonths.Items.Count > 0) cboMonths.SelectedIndex = 0;
     }
 }

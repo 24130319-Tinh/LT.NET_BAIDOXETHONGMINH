@@ -46,14 +46,26 @@ bld/
 *.sqlite-wal
 *.sqlite-journal
 
-# (Tuỳ chọn) Bỏ dấu # ở 2 dòng dưới nếu nhóm tự tạo DB bằng code/script .sql và không muốn bị xung đột file .db khi test:
-# *.db
-# *.sqlite
+# Local SQLite database (runtime data — không commit)
+*.db
+*.sqlite
+BAIDOXETHONGMINH/DAL/Database/smart_parking.db
 
 # Local environment / secret config
 .env
 *.local.json
 
+# Command Code local tool data
+.commandcode/
+
+# Ảnh xe lưu tạm trong quá trình chạy thử Check-in / Check-out
+**/Assets/SessionImages/*
+!**/Assets/SessionImages/.gitkeep
+# Shell/tool junk artifacts
+$null
+
 # OS generated files
 .DS_Store
 Thumbs.db
+$null
+/Rules_project

@@ -2,21 +2,15 @@ using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
 
-/// <summary>
-/// Quản lý kết nối và khởi tạo cấu trúc 12 bảng cho CSDL SQLite (smart_parking.db)
-/// </summary>
 public static class SqliteDbContext
 {
-    /// <summary>
-    /// Đường dẫn tới file vật lý DAL/Database/smart_parking.db
-    /// </summary>
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
 
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";
 
+    // Hàm xác định đường dẫn tuyệt đối tới file cơ sở dữ liệu smart_parking.db
     private static string ResolveDatabasePath()
     {
-        // Ưu tiên trỏ trực tiếp tới file DAL/Database/smart_parking.db trong thư mục Project khi chạy Debug/Release
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         DirectoryInfo? dir = new DirectoryInfo(baseDir);
 
@@ -37,15 +31,12 @@ public static class SqliteDbContext
             dir = dir.Parent;
         }
 
-        // Dự phòng nếu chạy bản đóng gói độc lập
         string fallbackDir = Path.Combine(baseDir, "DAL", "Database");
         Directory.CreateDirectory(fallbackDir);
         return Path.Combine(fallbackDir, "smart_parking.db");
     }
 
-    /// <summary>
-    /// Mở kết nối SQLite đã bật kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
-    /// </summary>
+    // Hàm mở kết nối SQLite và bật chế độ kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
     public static SqliteConnection GetConnection()
     {
         SqliteConnection connection = new SqliteConnection(ConnectionString);
@@ -58,23 +49,240 @@ public static class SqliteDbContext
         return connection;
     }
 
-    /// <summary>
-    /// Đảm bảo file smart_parking.db có đủ cấu trúc 12 bảng (không tự nạp dữ liệu mẫu)
-    /// </summary>
+    // Hàm khởi tạo cấu trúc 12 bảng cho CSDL, nạp dữ liệu mẫu nếu trống và nâng cấp bố cục 6 khu nếu cần
     public static void InitializeDatabase()
     {
-        using SqliteConnection connection = GetConnection();
-        using SqliteCommand cmd = connection.CreateCommand();
-        cmd.CommandText = GetSchemaSql();
-        cmd.ExecuteNonQuery();
+        using (SqliteConnection connection = GetConnection())
+        {
+            using SqliteCommand cmd = connection.CreateCommand();
+            cmd.CommandText = GetSchemaSql();
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSeedHelper.SeedTestDataIfEmpty();
+        UpgradeParkingLayoutIfNeeded();
     }
 
+    // Hàm nâng cấp tự động một lần từ bãi 2 khu (20 chỗ) lên 6 khu (A-D Xe máy 20 chỗ, E-F Ô tô 8 chỗ, 96 thẻ) mà giữ nguyên dữ liệu cũ
+    private static void UpgradeParkingLayoutIfNeeded()
+    {
+        using SqliteConnection connection = GetConnection();
+        using SqliteTransaction transaction = connection.BeginTransaction();
+
+        try
+        {
+            using (SqliteCommand ensureSettingsCmd = connection.CreateCommand())
+            {
+                ensureSettingsCmd.Transaction = transaction;
+                ensureSettingsCmd.CommandText = "CREATE TABLE IF NOT EXISTS AppSettings (SettingKey TEXT PRIMARY KEY, SettingValue TEXT NOT NULL);";
+                ensureSettingsCmd.ExecuteNonQuery();
+            }
+
+            using (SqliteCommand checkFlagCmd = connection.CreateCommand())
+            {
+                checkFlagCmd.Transaction = transaction;
+                checkFlagCmd.CommandText = "SELECT SettingValue FROM AppSettings WHERE SettingKey = 'ParkingLotLayoutV2_96Slots' LIMIT 1;";
+                object? flagVal = checkFlagCmd.ExecuteScalar();
+                if (flagVal != null && flagVal != DBNull.Value && string.Equals(flagVal.ToString(), "1", StringComparison.Ordinal))
+                {
+                    transaction.Commit();
+                    return;
+                }
+            }
+
+            using (SqliteCommand ensureTypesCmd = connection.CreateCommand())
+            {
+                ensureTypesCmd.Transaction = transaction;
+                ensureTypesCmd.CommandText = @"
+                    INSERT OR IGNORE INTO VehicleTypes (VehicleTypeId, TypeName, Description) VALUES
+                    ('XEMAY', 'Xe máy', 'Xe máy 2 bánh / Xe tay ga'),
+                    ('OTO', 'Ô tô', 'Ô tô con 4 - 7 chỗ');";
+                ensureTypesCmd.ExecuteNonQuery();
+            }
+
+            using (SqliteCommand upsertZonesCmd = connection.CreateCommand())
+            {
+                upsertZonesCmd.Transaction = transaction;
+                upsertZonesCmd.CommandText = @"
+                    INSERT INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity) VALUES
+                    ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 20),
+                    ('ZONE_B', 'Khu B - Xe máy', 'XEMAY', 20),
+                    ('ZONE_C', 'Khu C - Xe máy', 'XEMAY', 20),
+                    ('ZONE_D', 'Khu D - Xe máy', 'XEMAY', 20),
+                    ('ZONE_E', 'Khu E - Ô tô', 'OTO', 8),
+                    ('ZONE_F', 'Khu F - Ô tô', 'OTO', 8)
+                    ON CONFLICT(ZoneId) DO UPDATE SET
+                        ZoneName = excluded.ZoneName,
+                        VehicleTypeId = excluded.VehicleTypeId,
+                        MaxCapacity = excluded.MaxCapacity;";
+                upsertZonesCmd.ExecuteNonQuery();
+            }
+
+            (string ZoneId, string Prefix, int Capacity)[] zoneLayouts = new (string ZoneId, string Prefix, int Capacity)[]
+            {
+                ("ZONE_A", "A", 20),
+                ("ZONE_B", "B", 20),
+                ("ZONE_C", "C", 20),
+                ("ZONE_D", "D", 20),
+                ("ZONE_E", "E", 8),
+                ("ZONE_F", "F", 8)
+            };
+
+            foreach ((string zoneId, string prefix, int capacity) in zoneLayouts)
+            {
+                for (int i = 1; i <= capacity; i++)
+                {
+                    string slotCode = $"{prefix}-{i:D2}";
+                    using SqliteCommand insertSlotCmd = connection.CreateCommand();
+                    insertSlotCmd.Transaction = transaction;
+                    insertSlotCmd.CommandText = "INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES (@code, @zone, 'Available', NULL);";
+                    insertSlotCmd.Parameters.AddWithValue("@code", slotCode);
+                    insertSlotCmd.Parameters.AddWithValue("@zone", zoneId);
+                    insertSlotCmd.ExecuteNonQuery();
+                }
+            }
+
+            for (int i = 1; i <= 96; i++)
+            {
+                string cardCode = $"THE{i:D3}";
+                using SqliteCommand insertCardCmd = connection.CreateCommand();
+                insertCardCmd.Transaction = transaction;
+                insertCardCmd.CommandText = "INSERT OR IGNORE INTO ParkingCards (CardCode, LicensePlate, Status) VALUES (@card, NULL, 'Available');";
+                insertCardCmd.Parameters.AddWithValue("@card", cardCode);
+                insertCardCmd.ExecuteNonQuery();
+            }
+
+            List<(int SessionId, string OldSlot, string LicensePlate)> activeCarSessionsInB = new List<(int SessionId, string OldSlot, string LicensePlate)>();
+            using (SqliteCommand queryActiveCarsCmd = connection.CreateCommand())
+            {
+                queryActiveCarsCmd.Transaction = transaction;
+                queryActiveCarsCmd.CommandText = @"
+                    SELECT SessionId, SlotCode, LicensePlate
+                    FROM ParkingSessions
+                    WHERE Status = 'Parking'
+                      AND UPPER(VehicleTypeId) = 'OTO'
+                      AND SlotCode LIKE 'B-%'
+                    ORDER BY SessionId ASC;";
+                using SqliteDataReader reader = queryActiveCarsCmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    activeCarSessionsInB.Add((reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
+                }
+            }
+
+            foreach ((int sessionId, string oldSlot, string licensePlate) in activeCarSessionsInB)
+            {
+                string preferredNewSlot = "E-" + oldSlot.Substring(2);
+                string? targetNewSlot = null;
+
+                using (SqliteCommand checkPreferredCmd = connection.CreateCommand())
+                {
+                    checkPreferredCmd.Transaction = transaction;
+                    checkPreferredCmd.CommandText = "SELECT SlotCode FROM ParkingSlots WHERE SlotCode = @slot AND Status = 'Available' LIMIT 1;";
+                    checkPreferredCmd.Parameters.AddWithValue("@slot", preferredNewSlot);
+                    object? prefObj = checkPreferredCmd.ExecuteScalar();
+                    if (prefObj != null && prefObj != DBNull.Value)
+                    {
+                        targetNewSlot = prefObj.ToString();
+                    }
+                }
+
+                if (string.IsNullOrEmpty(targetNewSlot))
+                {
+                    using SqliteCommand findCarSlotCmd = connection.CreateCommand();
+                    findCarSlotCmd.Transaction = transaction;
+                    findCarSlotCmd.CommandText = "SELECT SlotCode FROM ParkingSlots WHERE ZoneId IN ('ZONE_E', 'ZONE_F') AND Status = 'Available' ORDER BY SlotCode ASC LIMIT 1;";
+                    object? foundObj = findCarSlotCmd.ExecuteScalar();
+                    if (foundObj != null && foundObj != DBNull.Value)
+                    {
+                        targetNewSlot = foundObj.ToString();
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(targetNewSlot))
+                {
+                    using (SqliteCommand occupyNewCmd = connection.CreateCommand())
+                    {
+                        occupyNewCmd.Transaction = transaction;
+                        occupyNewCmd.CommandText = "UPDATE ParkingSlots SET Status = 'Occupied', CurrentLicensePlate = @plate WHERE SlotCode = @newSlot;";
+                        occupyNewCmd.Parameters.AddWithValue("@plate", licensePlate);
+                        occupyNewCmd.Parameters.AddWithValue("@newSlot", targetNewSlot);
+                        occupyNewCmd.ExecuteNonQuery();
+                    }
+
+                    using (SqliteCommand moveSessionCmd = connection.CreateCommand())
+                    {
+                        moveSessionCmd.Transaction = transaction;
+                        moveSessionCmd.CommandText = "UPDATE ParkingSessions SET SlotCode = @newSlot WHERE SessionId = @sessionId;";
+                        moveSessionCmd.Parameters.AddWithValue("@newSlot", targetNewSlot);
+                        moveSessionCmd.Parameters.AddWithValue("@sessionId", sessionId);
+                        moveSessionCmd.ExecuteNonQuery();
+                    }
+
+                    using (SqliteCommand freeOldCmd = connection.CreateCommand())
+                    {
+                        freeOldCmd.Transaction = transaction;
+                        freeOldCmd.CommandText = "UPDATE ParkingSlots SET Status = 'Available', CurrentLicensePlate = NULL WHERE SlotCode = @oldSlot;";
+                        freeOldCmd.Parameters.AddWithValue("@oldSlot", oldSlot);
+                        freeOldCmd.ExecuteNonQuery();
+                    }
+                }
+            }
+
+            using (SqliteCommand cleanOrphanSlotCmd = connection.CreateCommand())
+            {
+                cleanOrphanSlotCmd.Transaction = transaction;
+                cleanOrphanSlotCmd.CommandText = @"
+                    UPDATE ParkingSlots
+                    SET Status = 'Available',
+                        CurrentLicensePlate = NULL
+                    WHERE ZoneId = 'ZONE_B'
+                      AND Status = 'Occupied'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM ParkingSessions
+                          WHERE ParkingSessions.SlotCode = ParkingSlots.SlotCode
+                            AND ParkingSessions.Status = 'Parking'
+                      );";
+                cleanOrphanSlotCmd.ExecuteNonQuery();
+            }
+
+            using (SqliteCommand setFlagCmd = connection.CreateCommand())
+            {
+                setFlagCmd.Transaction = transaction;
+                setFlagCmd.CommandText = "INSERT OR REPLACE INTO AppSettings (SettingKey, SettingValue) VALUES ('ParkingLotLayoutV2_96Slots', '1');";
+                setFlagCmd.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch (Exception)
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    // Hàm khởi tạo cấu trúc CSDL và dữ liệu mẫu theo cơ chế bất đồng bộ cho tầng Service
+    public static Task InitializeDatabaseAsync()
+    {
+        InitializeDatabase();
+        return Task.CompletedTask;
+    }
+
+    // Hàm đọc câu lệnh SQL tạo cấu trúc 12 bảng từ file schema.sql (tách bỏ phần dữ liệu test mẫu) hoặc chuỗi SQL dự phòng
     private static string GetSchemaSql()
     {
         string schemaFilePath = Path.Combine(Path.GetDirectoryName(DatabaseFilePath) ?? string.Empty, "schema.sql");
         if (File.Exists(schemaFilePath))
         {
-            return File.ReadAllText(schemaFilePath);
+            string fullSchema = File.ReadAllText(schemaFilePath);
+            int seedSectionIndex = fullSchema.IndexOf("-- PHẦN 2", StringComparison.OrdinalIgnoreCase);
+            if (seedSectionIndex > 0)
+            {
+                return fullSchema.Substring(0, seedSectionIndex);
+            }
+
+            return fullSchema;
         }
 
         return @"

@@ -5,18 +5,14 @@ namespace BAIDOXETHONGMINH;
 
 static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
+    // Hàm khởi chạy chính của ứng dụng, khởi tạo CSDL, phiên người dùng mặc định và mở màn hình MainLayout
     [STAThread]
     static void Main()
     {
         ApplicationConfiguration.Initialize();
 
-        // Đảm bảo cấu trúc 12 bảng trong DAL/Database/smart_parking.db
         SqliteDbContext.InitializeDatabase();
 
-        // Kiểm tra kết nối tồn tại trước khi mở ứng dụng
         bool isConnected = DatabaseConnectionTester.IsConnectionAvailable();
         if (!isConnected)
         {
@@ -29,6 +25,14 @@ static class Program
             return;
         }
 
-        Application.Run(new MainLayout());
+        try
+        {
+            AppService.InitializeAsync().GetAwaiter().GetResult();
+            Application.Run(new MainLayout());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Không khởi tạo được dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 }
