@@ -1,3 +1,4 @@
+using BAIDOXETHONGMINH.DTO.Entities;
 namespace BAIDOXETHONGMINH.GUI;
 
 public partial class CustomerForm : Form
@@ -19,6 +20,10 @@ public partial class CustomerForm : Form
         SetupCustomerGrid();
     }
 
+    private readonly CustomerService _service = AppService.Customers;
+    private bool _saving;
+    private int _searchVersion;
+
     private void SetupCustomerGrid()
     {
         dgvCustomers.Columns.Add("CustomerId", "Mã KH");
@@ -26,45 +31,75 @@ public partial class CustomerForm : Form
         dgvCustomers.Columns.Add("Phone", "Số điện thoại");
         dgvCustomers.Columns.Add("IdentityCard", "Số CCCD");
         dgvCustomers.Columns.Add("CreatedAt", "Ngày đăng ký");
+        Load += async (_, _) => await Dialogs.RunAsync(async () =>
+        {
+            await AppService.InitializeAsync();
+            await RefreshCustomersAsync();
+        });
+        txtSearchCustomer.TextChanged += async (_, _) => await Dialogs.RunAsync(RefreshCustomersAsync);
+    }
 
-        dgvCustomers.Rows.Add("KH-01", "Trần Minh Hoàng", "0908123456", "079204001234", "01/10/2026");
-        dgvCustomers.Rows.Add("KH-02", "Nguyễn Thị Lan", "0912345678", "079204005678", "15/10/2026");
-        dgvCustomers.Rows.Add("KH-03", "Lê Quốc Bảo", "0987654321", "079204009999", "01/09/2026");
+    private Customer? SelectedCustomer => dgvCustomers.CurrentRow?.Tag as Customer;
+
+    private async Task RefreshCustomersAsync()
+    {
+        int version = ++_searchVersion;
+        int? selectedId = SelectedCustomer?.CustomerId;
+        var customers = await _service.SearchAsync(txtSearchCustomer.Text);
+        if (IsDisposed || version != _searchVersion) return;
+        dgvCustomers.Rows.Clear();
+        foreach (var customer in customers)
+        {
+            int index = dgvCustomers.Rows.Add($"KH-{customer.CustomerId:00}", customer.FullName,
+                customer.Phone, customer.IdentityCard, Fmt.Date(customer.CreatedAt));
+            dgvCustomers.Rows[index].Tag = customer;
+        }
+        var row = dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault(r =>
+            (r.Tag as Customer)?.CustomerId == selectedId) ?? dgvCustomers.Rows.Cast<DataGridViewRow>().FirstOrDefault();
+        if (row != null) dgvCustomers.CurrentCell = row.Cells[0];
+        DgvCustomers_SelectionChanged(null, EventArgs.Empty);
     }
 
     private void DgvCustomers_SelectionChanged(object? sender, EventArgs e)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        txtFullName.Text = dgvCustomers.CurrentRow.Cells[1].Value?.ToString() ?? "";
-        txtPhone.Text = dgvCustomers.CurrentRow.Cells[2].Value?.ToString() ?? "";
-        txtCccd.Text = dgvCustomers.CurrentRow.Cells[3].Value?.ToString() ?? "";
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        txtFullName.Text = customer.FullName;
+        txtPhone.Text = customer.Phone;
+        txtCccd.Text = customer.IdentityCard;
     }
 
-    private void BtnAddCustomer_Click(object? sender, EventArgs e)
+    private async Task SaveAsync(Func<Task> action)
     {
-        if (string.IsNullOrWhiteSpace(txtFullName.Text) || string.IsNullOrWhiteSpace(txtPhone.Text))
+        if (_saving) return;
+        _saving = true;
+        btnAddCustomer.Enabled = btnUpdateCustomer.Enabled = btnDeleteCustomer.Enabled = false;
+        try { await Dialogs.RunAsync(async () => { await action(); await RefreshCustomersAsync(); }); }
+        finally
         {
-            MessageBox.Show("Vui lòng nhập Họ tên và Số điện thoại khách hàng!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            _saving = false;
+            if (!IsDisposed) btnAddCustomer.Enabled = btnUpdateCustomer.Enabled = btnDeleteCustomer.Enabled = true;
         }
-
-        string id = $"KH-0{dgvCustomers.Rows.Count + 1}";
-        dgvCustomers.Rows.Add(id, txtFullName.Text.Trim(), txtPhone.Text.Trim(), txtCccd.Text.Trim(), DateTime.Now.ToString("dd/MM/yyyy"));
-        MessageBox.Show($"Đã thêm khách hàng {txtFullName.Text.Trim()} ({id}) thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
-    private void BtnUpdateCustomer_Click(object? sender, EventArgs e)
+    private async void BtnAddCustomer_Click(object? sender, EventArgs e) => await SaveAsync(() =>
+        _service.AddAsync(new Customer { FullName = txtFullName.Text, Phone = txtPhone.Text, IdentityCard = txtCccd.Text }));
+
+    private async void BtnUpdateCustomer_Click(object? sender, EventArgs e)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        dgvCustomers.CurrentRow.Cells[1].Value = txtFullName.Text.Trim();
-        dgvCustomers.CurrentRow.Cells[2].Value = txtPhone.Text.Trim();
-        dgvCustomers.CurrentRow.Cells[3].Value = txtCccd.Text.Trim();
-        MessageBox.Show("Đã cập nhật hồ sơ khách hàng!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        await SaveAsync(() => _service.UpdateAsync(new Customer
+        {
+            CustomerId = customer.CustomerId, FullName = txtFullName.Text,
+            Phone = txtPhone.Text, IdentityCard = txtCccd.Text
+        }));
     }
 
-    private void BtnDeleteCustomer_Click(object? sender, EventArgs e)
+    private async void BtnDeleteCustomer_Click(object? sender, EventArgs e)
     {
-        if (dgvCustomers.CurrentRow == null) return;
-        dgvCustomers.Rows.Remove(dgvCustomers.CurrentRow);
+        var customer = SelectedCustomer;
+        if (customer == null) return;
+        await SaveAsync(() => _service.DeleteAsync(customer.CustomerId));
     }
 }

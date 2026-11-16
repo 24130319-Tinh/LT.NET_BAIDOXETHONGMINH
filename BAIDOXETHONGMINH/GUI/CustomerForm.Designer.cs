@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class CustomerForm
@@ -65,7 +66,6 @@ partial class CustomerForm
 
         ClientSize = new Size(1020, 720);
 
-        // Header
         pnlHeader.Size = new Size(1020, 68);
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
@@ -85,7 +85,6 @@ partial class CustomerForm
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSubtitle);
 
-        // Main 2 Columns
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 2;
@@ -96,7 +95,6 @@ partial class CustomerForm
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
-        // Left Card
         pnlLeftForm.Size = new Size(370, 620);
         pnlLeftForm.Dock = DockStyle.Fill;
         pnlLeftForm.BackColor = Color.White;
@@ -154,7 +152,6 @@ partial class CustomerForm
         pnlLeftForm.Controls.Add(btnUpdateCustomer);
         pnlLeftForm.Controls.Add(btnDeleteCustomer);
 
-        // Right Card
         pnlRightGrid.Size = new Size(600, 620);
         pnlRightGrid.Dock = DockStyle.Fill;
         pnlRightGrid.BackColor = Color.White;

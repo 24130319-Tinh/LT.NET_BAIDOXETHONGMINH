@@ -1,4 +1,3 @@
-using BAIDOXETHONGMINH.DAL.Database;
 using BAIDOXETHONGMINH.GUI;
 
 namespace BAIDOXETHONGMINH;
@@ -16,15 +15,12 @@ static class Program
         bool isConnected = DatabaseConnectionTester.IsConnectionAvailable();
         if (!isConnected)
         {
-            MessageBox.Show(
-                "Không thể kết nối tới cơ sở dữ liệu smart_parking.db!",
-                "Lỗi Kết nối CSDL",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error
-            );
-            return;
+            AppService.InitializeAsync().GetAwaiter().GetResult();
+            Application.Run(new MainLayout());
         }
-
-        Application.Run(new MainLayout());
+        catch (Exception ex)
+        {
+            MessageBox.Show("Không khởi tạo được dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 }

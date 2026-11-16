@@ -1,3 +1,4 @@
+#nullable enable
 namespace BAIDOXETHONGMINH.GUI;
 
 partial class MenuForm

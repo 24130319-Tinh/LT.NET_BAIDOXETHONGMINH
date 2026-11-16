@@ -4,6 +4,20 @@ using BAIDOXETHONGMINH.DTO.Models;
 
 namespace BAIDOXETHONGMINH.Services;
 
+public sealed record ParkingVisit(int SessionId, string CardCode, string LicensePlate,
+    string VehicleTypeId, string TypeName, string SlotCode, DateTime CheckInTime,
+    bool IsMonthlyPass, string? ImagePath)
+{
+    public override string ToString() => $"{CardCode} — {LicensePlate} ({TypeName} • {SlotCode})";
+}
+
+public sealed record CheckoutQuote(ParkingVisit Visit, DateTime ExitTime, decimal ParkingFee, decimal Penalty)
+{
+    public decimal Total => ParkingFee + Penalty;
+}
+
+public sealed record LostCardReport(string FullName, string Phone, string IdentityCard);
+
 public class ParkingService
 {
     private readonly ParkingRepository _parkingRepository;
