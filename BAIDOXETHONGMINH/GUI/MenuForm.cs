@@ -2,16 +2,10 @@ using System.Drawing.Drawing2D;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// Component UI Menu bên trái độc lập, phát sự kiện MenuItemSelected khi người dùng chọn chức năng
-/// </summary>
 public partial class MenuForm : Form
 {
     private Button? _activeButton;
 
-    /// <summary>
-    /// Sự kiện báo cho MainLayout biết người dùng vừa bấm chọn mục nào trên Menu
-    /// </summary>
     public event Action<string>? MenuItemSelected;
 
     public MenuForm()
