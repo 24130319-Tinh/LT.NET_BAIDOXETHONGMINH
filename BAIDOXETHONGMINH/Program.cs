@@ -4,11 +4,16 @@ namespace BAIDOXETHONGMINH;
 
 static class Program
 {
+    // Hàm khởi chạy chính của ứng dụng, khởi tạo CSDL và mở màn hình MainLayout
     [STAThread]
     static void Main()
     {
         ApplicationConfiguration.Initialize();
-        try
+
+        SqliteDbContext.InitializeDatabase();
+
+        bool isConnected = DatabaseConnectionTester.IsConnectionAvailable();
+        if (!isConnected)
         {
             AppService.InitializeAsync().GetAwaiter().GetResult();
             Application.Run(new MainLayout());

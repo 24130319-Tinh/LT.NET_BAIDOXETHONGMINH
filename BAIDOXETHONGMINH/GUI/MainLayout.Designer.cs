@@ -8,6 +8,7 @@ partial class MainLayout
     private Panel pnlLeftMenu = null!;
     private Panel pnlRightContent = null!;
 
+    // Hàm giải phóng tài nguyên giao diện của MainLayout khi đóng ứng dụng
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -17,6 +18,7 @@ partial class MainLayout
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo hai khung Panel trái và phải cho cửa sổ chính MainLayout
     private void InitializeComponent()
     {
         pnlLeftMenu = new Panel();

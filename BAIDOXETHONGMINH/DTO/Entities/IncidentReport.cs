@@ -1,9 +1,5 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
-/// <summary>
-/// Bảng IncidentReports: Biên bản sự cố / mất thẻ xe
-/// IncidentType: "LostCard" (Mất thẻ), "Damage" (Va quệt/Hư hỏng), "Other" (Khác)
-/// </summary>
 public class IncidentReport
 {
     public int IncidentId { get; set; }

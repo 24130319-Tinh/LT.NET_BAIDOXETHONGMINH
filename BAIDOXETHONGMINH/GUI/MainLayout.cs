@@ -1,30 +1,24 @@
 namespace BAIDOXETHONGMINH.GUI;
 
-/// <summary>
-/// MainLayout đóng vai trò khung bố cục chính:
-/// - Bên trái (pnlLeftMenu): Nhúng component MenuForm
-/// - Bên phải (pnlRightContent): Hiển thị Form tương ứng với mục được chọn trên Menu
-/// </summary>
 public partial class MainLayout : Form
 {
     private readonly MenuForm _menuForm;
     private Form? _currentRightForm;
 
+    // Hàm khởi tạo khung bố cục chính MainLayout, nhúng Menu bên trái và mở CheckInOutForm bên phải
     public MainLayout()
     {
         InitializeComponent();
 
-        // 1. Khởi tạo và nhúng component MenuForm vào khung bên trái
         _menuForm = new MenuForm();
         EmbedFormIntoPanel(_menuForm, pnlLeftMenu);
 
-        // 2. Lắng nghe sự kiện khi người dùng bấm chọn mục trên MenuForm
         _menuForm.MenuItemSelected += OnMenuItemSelected;
 
-        // 3. Đầu tiên khi mở app: chọn Mục 1 và hiển thị CheckInOutForm
         OpenRightComponent(new CheckInOutForm());
     }
 
+    // Hàm điều hướng mở Form chức năng tương ứng khi người dùng chọn mục trên Menu
     private void OnMenuItemSelected(string menuKey)
     {
         Form targetForm = menuKey switch
@@ -41,25 +35,37 @@ public partial class MainLayout : Form
         OpenRightComponent(targetForm);
     }
 
-    /// <summary>
-    /// Nhúng một Form component vào khung nội dung bên phải (pnlRightContent)
-    /// </summary>
+    // Hàm đóng Form cũ và nhúng Form chức năng mới vào vùng nội dung bên phải
     public void OpenRightComponent(Form childForm)
     {
         if (_currentRightForm != null)
         {
+            if (_currentRightForm is CheckInOutForm oldCheckInForm)
+            {
+                oldCheckInForm.SlotCapacityChanged -= OnSlotCapacityChanged;
+            }
+
             _currentRightForm.Close();
             _currentRightForm.Dispose();
             _currentRightForm = null;
+        }
+
+        if (childForm is CheckInOutForm newCheckInForm)
+        {
+            newCheckInForm.SlotCapacityChanged += OnSlotCapacityChanged;
         }
 
         _currentRightForm = childForm;
         EmbedFormIntoPanel(childForm, pnlRightContent);
     }
 
-    /// <summary>
-    /// Hàm dùng chung để tái sử dụng (nhúng) bất kỳ Form nào vào bên trong một Panel
-    /// </summary>
+    // Hàm nhận sự kiện thay đổi số chỗ trống từ CheckInOutForm và cập nhật lên Sidebar
+    private void OnSlotCapacityChanged(int availableSlots, int totalSlots)
+    {
+        _menuForm.UpdateSlotCapacity(availableSlots, totalSlots);
+    }
+
+    // Hàm nhúng một Form con vào bên trong một Panel chứa
     private static void EmbedFormIntoPanel(Form formComponent, Panel containerPanel)
     {
         containerPanel.Controls.Clear();

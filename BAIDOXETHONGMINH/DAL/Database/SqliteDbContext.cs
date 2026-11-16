@@ -4,19 +4,11 @@ namespace BAIDOXETHONGMINH.DAL.Database;
 
 public static class SqliteDbContext
 {
-    public static async Task InitializeDatabaseAsync()
-    {
-        await SqliteHelper.ExecuteAsync(GetSchemaSql());
-        await SqliteHelper.ExecuteAsync("""
-            CREATE TABLE IF NOT EXISTS AppSettings (SettingKey TEXT PRIMARY KEY, SettingValue TEXT NOT NULL);
-            INSERT OR IGNORE INTO Users (Username, PasswordHash, FullName, Phone, IsActive)
-            VALUES ('local', '', 'Nhân viên tại máy', '', 0);
-            """);
-    }
     public static string DatabaseFilePath { get; } = ResolveDatabasePath();
 
     public static string ConnectionString => $"Data Source={DatabaseFilePath}";
 
+    // Hàm xác định đường dẫn tuyệt đối tới file cơ sở dữ liệu smart_parking.db
     private static string ResolveDatabasePath()
     {
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -44,6 +36,7 @@ public static class SqliteDbContext
         return Path.Combine(fallbackDir, "smart_parking.db");
     }
 
+    // Hàm mở kết nối SQLite và bật chế độ kiểm tra khóa ngoại (PRAGMA foreign_keys = ON)
     public static SqliteConnection GetConnection()
     {
         SqliteConnection connection = new SqliteConnection(ConnectionString);
@@ -56,14 +49,20 @@ public static class SqliteDbContext
         return connection;
     }
 
+    // Hàm khởi tạo cấu trúc 12 bảng cho CSDL và nạp dữ liệu mẫu nếu CSDL đang trống
     public static void InitializeDatabase()
     {
-        using SqliteConnection connection = GetConnection();
-        using SqliteCommand cmd = connection.CreateCommand();
-        cmd.CommandText = GetSchemaSql();
-        cmd.ExecuteNonQuery();
+        using (SqliteConnection connection = GetConnection())
+        {
+            using SqliteCommand cmd = connection.CreateCommand();
+            cmd.CommandText = GetSchemaSql();
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSeedHelper.SeedTestDataIfEmpty();
     }
 
+    // Hàm đọc câu lệnh SQL tạo bảng từ file schema.sql hoặc chuỗi SQL dự phòng
     private static string GetSchemaSql()
     {
         string schemaFilePath = Path.Combine(Path.GetDirectoryName(DatabaseFilePath) ?? string.Empty, "schema.sql");

@@ -58,9 +58,13 @@ BAIDOXETHONGMINH/DAL/Database/smart_parking.db
 # Command Code local tool data
 .commandcode/
 
+# Ảnh xe lưu tạm trong quá trình chạy thử Check-in / Check-out
+**/Assets/SessionImages/*
+!**/Assets/SessionImages/.gitkeep
 # Shell/tool junk artifacts
 $null
 
 # OS generated files
 .DS_Store
 Thumbs.db
+$null
