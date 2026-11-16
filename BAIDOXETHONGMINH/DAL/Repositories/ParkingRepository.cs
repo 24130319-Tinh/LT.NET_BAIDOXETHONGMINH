@@ -1,6 +1,7 @@
 using System.Globalization;
 using BAIDOXETHONGMINH.DAL.Database;
 using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.GUI;
 using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Repositories;
@@ -59,31 +60,22 @@ public class ParkingRepository
                 connection,
                 transaction,
                 @"INSERT OR IGNORE INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity) VALUES
-                  ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 12),
-                  ('ZONE_B', 'Khu B - Ô tô', 'OTO', 8);"
+                  ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 20),
+                  ('ZONE_B', 'Khu B - Xe máy', 'XEMAY', 20),
+                  ('ZONE_C', 'Khu C - Xe máy', 'XEMAY', 20),
+                  ('ZONE_D', 'Khu D - Xe máy', 'XEMAY', 20),
+                  ('ZONE_E', 'Khu E - Ô tô', 'OTO', 8),
+                  ('ZONE_F', 'Khu F - Ô tô', 'OTO', 8);"
             );
 
-            for (int i = 1; i <= 12; i++)
-            {
-                string slotCode = $"A-{i:D2}";
-                ExecuteNonQuery(
-                    connection,
-                    transaction,
-                    $"INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES ('{slotCode}', 'ZONE_A', 'Available', NULL);"
-                );
-            }
+            SeedSlotsForZone(connection, transaction, "ZONE_A", "A", 20);
+            SeedSlotsForZone(connection, transaction, "ZONE_B", "B", 20);
+            SeedSlotsForZone(connection, transaction, "ZONE_C", "C", 20);
+            SeedSlotsForZone(connection, transaction, "ZONE_D", "D", 20);
+            SeedSlotsForZone(connection, transaction, "ZONE_E", "E", 8);
+            SeedSlotsForZone(connection, transaction, "ZONE_F", "F", 8);
 
-            for (int i = 1; i <= 8; i++)
-            {
-                string slotCode = $"B-{i:D2}";
-                ExecuteNonQuery(
-                    connection,
-                    transaction,
-                    $"INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES ('{slotCode}', 'ZONE_B', 'Available', NULL);"
-                );
-            }
-
-            for (int i = 1; i <= 20; i++)
+            for (int i = 1; i <= 96; i++)
             {
                 string cardCode = $"THE{i:D3}";
                 ExecuteNonQuery(
@@ -99,6 +91,20 @@ public class ParkingRepository
         {
             transaction.Rollback();
             throw;
+        }
+    }
+
+    // Hàm thêm nhanh các ô đỗ mặc định cho một khu vực trong cùng Transaction
+    private static void SeedSlotsForZone(SqliteConnection connection, SqliteTransaction transaction, string zoneId, string prefix, int capacity)
+    {
+        for (int i = 1; i <= capacity; i++)
+        {
+            string slotCode = $"{prefix}-{i:D2}";
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                $"INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES ('{slotCode}', '{zoneId}', 'Available', NULL);"
+            );
         }
     }
 
@@ -825,5 +831,279 @@ public class ParkingRepository
         cmd.Transaction = transaction;
         cmd.CommandText = sql;
         cmd.ExecuteNonQuery();
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng VehicleType
+    private static VehicleType MapType(SqliteDataReader r)
+    {
+        return new VehicleType
+        {
+            VehicleTypeId = r.GetString(0),
+            TypeName = r.GetString(1),
+            Description = SqliteHelper.GetNullableString(r, 2)
+        };
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng PricingRule
+    private static PricingRule MapRule(SqliteDataReader r)
+    {
+        return new PricingRule
+        {
+            RuleId = r.GetInt32(0),
+            VehicleTypeId = r.GetString(1),
+            DayTurnPrice = r.GetDecimal(2),
+            OvernightPrice = r.GetDecimal(3),
+            HourlyPrice = r.GetDecimal(4),
+            MonthlyPassPrice = r.GetDecimal(5),
+            LostCardPenalty = r.GetDecimal(6),
+            UpdatedAt = r.IsDBNull(7) ? DateTime.Now : ParseSqliteDateTime(r.GetString(7))
+        };
+    }
+
+    // Hàm lấy bất đồng bộ danh sách tất cả loại phương tiện
+    public Task<List<VehicleType>> GetVehicleTypesAsync()
+    {
+        return SqliteHelper.QueryAsync(
+            "SELECT VehicleTypeId, TypeName, Description FROM VehicleTypes ORDER BY VehicleTypeId",
+            MapType
+        );
+    }
+
+    // Hàm lấy bất đồng bộ danh sách cấu hình bảng giá của tất cả loại phương tiện
+    public Task<List<PricingRule>> GetPricingRulesAsync()
+    {
+        return SqliteHelper.QueryAsync(
+            "SELECT RuleId, VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt FROM PricingRules ORDER BY VehicleTypeId",
+            MapRule
+        );
+    }
+
+    // Hàm lấy bất đồng bộ cấu hình bảng giá theo mã loại phương tiện
+    public Task<PricingRule?> GetPricingRuleAsync(string vehicleTypeId)
+    {
+        return SqliteHelper.QueryFirstAsync(
+            "SELECT RuleId, VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt FROM PricingRules WHERE VehicleTypeId = @type",
+            MapRule,
+            ("@type", vehicleTypeId)
+        );
+    }
+
+    // Hàm thêm mới hoặc cập nhật bất đồng bộ cấu hình bảng giá theo loại phương tiện
+    public Task SavePricingRuleAsync(PricingRule rule)
+    {
+        return SqliteHelper.ExecuteAsync(
+            @"INSERT INTO PricingRules (VehicleTypeId, DayTurnPrice, OvernightPrice, HourlyPrice, MonthlyPassPrice, LostCardPenalty, UpdatedAt)
+              VALUES (@type, @day, @night, @hour, @month, @penalty, @updated)
+              ON CONFLICT(VehicleTypeId) DO UPDATE SET
+                  DayTurnPrice = excluded.DayTurnPrice,
+                  OvernightPrice = excluded.OvernightPrice,
+                  HourlyPrice = excluded.HourlyPrice,
+                  MonthlyPassPrice = excluded.MonthlyPassPrice,
+                  LostCardPenalty = excluded.LostCardPenalty,
+                  UpdatedAt = excluded.UpdatedAt",
+            ("@type", rule.VehicleTypeId),
+            ("@day", rule.DayTurnPrice),
+            ("@night", rule.OvernightPrice),
+            ("@hour", rule.HourlyPrice),
+            ("@month", rule.MonthlyPassPrice),
+            ("@penalty", rule.LostCardPenalty),
+            ("@updated", rule.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
+        );
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng ParkingZone
+    private static ParkingZone MapZone(SqliteDataReader r)
+    {
+        return new ParkingZone
+        {
+            ZoneId = r.GetString(0),
+            ZoneName = r.GetString(1),
+            VehicleTypeId = r.GetString(2),
+            MaxCapacity = r.GetInt32(3)
+        };
+    }
+
+    // Hàm lấy bất đồng bộ danh sách tất cả khu vực đỗ xe
+    public Task<List<ParkingZone>> GetZonesAsync()
+    {
+        return SqliteHelper.QueryAsync(
+            "SELECT ZoneId, ZoneName, VehicleTypeId, MaxCapacity FROM ParkingZones ORDER BY ZoneId",
+            MapZone
+        );
+    }
+
+    // Hàm thêm mới bất đồng bộ một khu vực đỗ xe vào CSDL
+    public Task AddZoneAsync(ParkingZone zone)
+    {
+        return SqliteHelper.ExecuteAsync(
+            "INSERT INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity) VALUES (@id, @name, @type, @capacity)",
+            ("@id", zone.ZoneId),
+            ("@name", zone.ZoneName),
+            ("@type", zone.VehicleTypeId),
+            ("@capacity", zone.MaxCapacity)
+        );
+    }
+
+    // Hàm xóa bất đồng bộ một khu vực đỗ xe theo mã khu
+    public async Task DeleteZoneAsync(string zoneId)
+    {
+        try
+        {
+            await SqliteHelper.ExecuteAsync("DELETE FROM ParkingZones WHERE ZoneId = @id", ("@id", zoneId));
+        }
+        catch (SqliteException ex) when (SqliteHelper.IsConstraintError(ex))
+        {
+            throw new ServiceException("Khu đang được dùng ở dữ liệu khác, không xóa được.");
+        }
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng ParkingSlot
+    private static ParkingSlot MapSlot(SqliteDataReader r)
+    {
+        return new ParkingSlot
+        {
+            SlotCode = r.GetString(0),
+            ZoneId = r.GetString(1),
+            Status = r.GetString(2),
+            CurrentLicensePlate = SqliteHelper.GetNullableString(r, 3)
+        };
+    }
+
+    // Hàm lấy bất đồng bộ danh sách tất cả các ô đỗ xe
+    public Task<List<ParkingSlot>> GetSlotsAsync()
+    {
+        return SqliteHelper.QueryAsync(
+            "SELECT SlotCode, ZoneId, Status, CurrentLicensePlate FROM ParkingSlots ORDER BY SlotCode",
+            MapSlot
+        );
+    }
+
+    // Hàm lấy bất đồng bộ thông tin một ô đỗ xe theo mã ô
+    public Task<ParkingSlot?> GetSlotAsync(string slotCode)
+    {
+        return SqliteHelper.QueryFirstAsync(
+            "SELECT SlotCode, ZoneId, Status, CurrentLicensePlate FROM ParkingSlots WHERE SlotCode = @code",
+            MapSlot,
+            ("@code", slotCode)
+        );
+    }
+
+    // Hàm thêm bất đồng bộ danh sách các ô đỗ mới trong một Transaction
+    public Task AddSlotsAsync(List<ParkingSlot> slots)
+    {
+        return SqliteHelper.InTransactionAsync(async (connection, tx) =>
+        {
+            foreach (ParkingSlot slot in slots)
+            {
+                await SqliteHelper.ExecuteAsync(
+                    connection,
+                    tx,
+                    "INSERT INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES (@code, @zone, @status, @plate)",
+                    ("@code", slot.SlotCode),
+                    ("@zone", slot.ZoneId),
+                    ("@status", slot.Status),
+                    ("@plate", slot.CurrentLicensePlate)
+                );
+            }
+        });
+    }
+
+    // Hàm cập nhật bất đồng bộ trạng thái và biển số hiện tại của một ô đỗ
+    public Task UpdateSlotAsync(ParkingSlot slot)
+    {
+        return SqliteHelper.ExecuteAsync(
+            "UPDATE ParkingSlots SET Status = @status, CurrentLicensePlate = @plate WHERE SlotCode = @code",
+            ("@status", slot.Status),
+            ("@plate", slot.CurrentLicensePlate),
+            ("@code", slot.SlotCode)
+        );
+    }
+
+    // Hàm xóa bất đồng bộ một ô đỗ xe theo mã ô nếu chưa phát sinh lịch sử gửi xe
+    public async Task DeleteSlotAsync(string slotCode)
+    {
+        try
+        {
+            await SqliteHelper.ExecuteAsync("DELETE FROM ParkingSlots WHERE SlotCode = @code", ("@code", slotCode));
+        }
+        catch (SqliteException ex) when (SqliteHelper.IsConstraintError(ex))
+        {
+            throw new ServiceException("Ô đã có lịch sử gửi xe, không xóa được. Hãy đặt ô sang Bảo trì.");
+        }
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng ParkingCard
+    private static ParkingCard MapCard(SqliteDataReader r)
+    {
+        return new ParkingCard
+        {
+            CardCode = r.GetString(0),
+            LicensePlate = SqliteHelper.GetNullableString(r, 1),
+            Status = r.GetString(2)
+        };
+    }
+
+    // Hàm lấy bất đồng bộ danh sách toàn bộ thẻ xe
+    public Task<List<ParkingCard>> GetCardsAsync()
+    {
+        return SqliteHelper.QueryAsync(
+            "SELECT CardCode, LicensePlate, Status FROM ParkingCards ORDER BY CardCode",
+            MapCard
+        );
+    }
+
+    // Hàm lấy bất đồng bộ thông tin một thẻ xe theo mã thẻ
+    public Task<ParkingCard?> GetCardAsync(string cardCode)
+    {
+        return SqliteHelper.QueryFirstAsync(
+            "SELECT CardCode, LicensePlate, Status FROM ParkingCards WHERE CardCode = @code",
+            MapCard,
+            ("@code", cardCode)
+        );
+    }
+
+    // Hàm thêm mới bất đồng bộ một thẻ xe vào danh mục
+    public Task AddCardAsync(ParkingCard card)
+    {
+        return SqliteHelper.ExecuteAsync(
+            "INSERT INTO ParkingCards (CardCode, LicensePlate, Status) VALUES (@code, @plate, @status)",
+            ("@code", card.CardCode),
+            ("@plate", card.LicensePlate),
+            ("@status", card.Status)
+        );
+    }
+
+    // Hàm cập nhật bất đồng bộ trạng thái và biển số đang gắn của thẻ xe
+    public Task UpdateCardAsync(ParkingCard card)
+    {
+        return SqliteHelper.ExecuteAsync(
+            "UPDATE ParkingCards SET LicensePlate = @plate, Status = @status WHERE CardCode = @code",
+            ("@plate", card.LicensePlate),
+            ("@status", card.Status),
+            ("@code", card.CardCode)
+        );
+    }
+
+    // Hàm kiểm tra bất đồng bộ xem thẻ xe hiện có đang gắn với lượt xe chưa ra bãi hay không
+    public async Task<bool> IsCardCurrentlyInActiveSessionAsync(string cardCode)
+    {
+        long activeCount = await SqliteHelper.ScalarAsync(
+            "SELECT COUNT(*) FROM ParkingSessions WHERE UPPER(CardCode) = UPPER(@code) AND Status = 'Parking';",
+            ("@code", cardCode)
+        );
+        return activeCount > 0;
+    }
+
+    // Hàm xóa bất đồng bộ một thẻ xe nếu chưa từng phát sinh lịch sử gửi xe
+    public async Task DeleteCardAsync(string cardCode)
+    {
+        try
+        {
+            await SqliteHelper.ExecuteAsync("DELETE FROM ParkingCards WHERE CardCode = @code", ("@code", cardCode));
+        }
+        catch (SqliteException ex) when (SqliteHelper.IsConstraintError(ex))
+        {
+            throw new ServiceException("Thẻ đã có lịch sử gửi xe, không xóa được. Hãy dùng chức năng Khóa thẻ.");
+        }
     }
 }

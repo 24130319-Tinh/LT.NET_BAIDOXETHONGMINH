@@ -45,6 +45,7 @@ public class MonthlyPassService(PricingService pricing)
         return baseDate.AddMonths(months);
     }
 
+    // Hàm đăng ký mới vé tháng kèm tạo/cập nhật khách hàng và hóa đơn thu tiền trong một Transaction
     public async Task<MonthlyPass> RegisterAsync(string fullName, string phone, string identityCard,
         string licensePlate, string vehicleTypeId, string? brand, int months)
     {
@@ -52,21 +53,20 @@ public class MonthlyPassService(PricingService pricing)
         string plate = PlateHelper.Clean(licensePlate);
         if (PlateHelper.Key(plate).Length == 0) throw new ServiceException("Biển số xe không hợp lệ.");
         if (string.IsNullOrWhiteSpace(vehicleTypeId)) throw new ServiceException("Phải chọn loại xe.");
-        var rule = await pricing.GetRequiredAsync(vehicleTypeId);
+        PricingRule rule = await pricing.GetRequiredAsync(vehicleTypeId);
 
         await _repo.ExpireOverdueAsync(DateTime.Today);
-        var actives = await _repo.GetActiveAsync();
+        List<MonthlyPass> actives = await _repo.GetActiveAsync();
         if (actives.Any(p => PlateHelper.Same(p.LicensePlate, plate)))
             throw new ServiceException($"Biển số {plate} đã có vé tháng còn hiệu lực. Hãy dùng chức năng gia hạn.");
 
-        var payment = NewPayment(PaymentType.MonthlyPassNew, rule.MonthlyPassPrice * months,
+        Customer customer = CustomerService.CreateValidatedCustomer(fullName, phone, identityCard);
+        PaymentTransaction payment = NewPayment(PaymentType.MonthlyPassNew, rule.MonthlyPassPrice * months,
             $"Đăng ký vé tháng {months} tháng, xe {plate}");
-        var customer = await _customers.GetOrCreateAsync(fullName, phone, identityCard);
 
-        var today = DateTime.Today;
-        var pass = new MonthlyPass
+        DateTime today = DateTime.Today;
+        MonthlyPass pass = new MonthlyPass
         {
-            CustomerId = customer.CustomerId,
             LicensePlate = plate,
             VehicleTypeId = vehicleTypeId,
             VehicleBrandColor = string.IsNullOrWhiteSpace(brand) ? null : brand.Trim(),
@@ -74,7 +74,7 @@ public class MonthlyPassService(PricingService pricing)
             EndDate = today.AddMonths(months),
             Status = PassStatus.Active
         };
-        await _repo.AddAsync(pass, payment);
+        await _repo.RegisterWithCustomerAsync(customer, pass, payment);
         return pass;
     }
 
@@ -101,12 +101,13 @@ public class MonthlyPassService(PricingService pricing)
         return pass;
     }
 
+    // Hàm cập nhật số điện thoại chủ xe và mô tả phương tiện của vé tháng
     public async Task UpdateInfoAsync(int passId, string phone, string? brand)
     {
         string newPhone = CustomerService.CheckPhone(phone);
-        var pass = await GetRequiredAsync(passId);
+        MonthlyPass pass = await GetRequiredAsync(passId);
 
-        var customer = (await _customers.GetAllAsync()).FirstOrDefault(c => c.CustomerId == pass.CustomerId);
+        Customer? customer = await _customers.GetByIdAsync(pass.CustomerId);
         if (customer == null) throw new ServiceException("Không tìm thấy chủ xe của vé này.");
 
         customer.Phone = newPhone;

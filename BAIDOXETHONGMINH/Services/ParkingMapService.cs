@@ -1,3 +1,4 @@
+using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.DTO.Entities;
 using BAIDOXETHONGMINH.Models;
 
@@ -118,11 +119,15 @@ public class ParkingMapService
         MapChanged?.Invoke();
     }
 
+    // Hàm tìm một ô đỗ còn trống phù hợp với mã loại phương tiện
     public async Task<ParkingSlot?> FindAvailableSlotAsync(string vehicleTypeId)
     {
-        var zones = await _repo.GetZonesAsync();
-        var slots = await _repo.GetSlotsAsync();
-        var zoneIds = zones.Where(z => z.VehicleTypeId == vehicleTypeId).Select(z => z.ZoneId).ToList();
+        List<ParkingZone> zones = await _repo.GetZonesAsync();
+        List<ParkingSlot> slots = await _repo.GetSlotsAsync();
+        List<string> zoneIds = zones
+            .Where(z => string.Equals(z.VehicleTypeId, vehicleTypeId, StringComparison.OrdinalIgnoreCase))
+            .Select(z => z.ZoneId)
+            .ToList();
 
         return slots.Where(s => zoneIds.Contains(s.ZoneId) && s.Status == SlotStatus.Available)
                     .OrderBy(s => s.ZoneId).ThenBy(s => s.SlotCode)

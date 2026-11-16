@@ -63,14 +63,17 @@ public partial class MonthlyRenewForm : Form
         DgvPasses_SelectionChanged(null, EventArgs.Empty);
     }
 
+    // Hàm hiển thị thông tin chi tiết của vé tháng đang chọn và khóa các nút/ô nhập khi chưa có dòng được chọn
     private void DgvPasses_SelectionChanged(object? sender, EventArgs e)
     {
-        var pass = SelectedPass;
+        MonthlyPassView? pass = SelectedPass;
         lblSelPassCode.Text = pass == null ? "—" : $"{pass.Code} ({pass.LicensePlate})";
         lblSelOwner.Text = pass?.OwnerName ?? "—";
         lblSelOldEnd.Text = pass?.EndDateText ?? "—";
-        txtUpdPhone.Text = pass?.Phone ?? "";
-        txtUpdBrand.Text = pass?.Brand ?? "";
+        txtUpdPhone.Text = pass?.Phone ?? string.Empty;
+        txtUpdBrand.Text = pass?.Brand ?? string.Empty;
+        txtUpdPhone.Enabled = !_saving && pass != null;
+        txtUpdBrand.Enabled = !_saving && pass != null;
         btnConfirmRenew.Enabled = !_saving && pass != null && pass.Status != PassStatus.Cancelled;
         btnSaveUpdate.Enabled = !_saving && pass != null;
         btnCancelPass.Enabled = !_saving && pass != null && pass.Status != PassStatus.Cancelled;
@@ -137,10 +140,20 @@ public partial class MonthlyRenewForm : Form
         await SaveAsync(() => _service.UpdateInfoAsync(pass.PassId, phone, brand), "Đã cập nhật thông tin vé tháng.");
     }
 
+    // Hàm xác nhận trước khi hủy vĩnh viễn một vé tháng đang chọn
     private async void BtnCancelPass_Click(object? sender, EventArgs e)
     {
-        var pass = SelectedPass;
+        MonthlyPassView? pass = SelectedPass;
         if (pass == null) return;
+
+        DialogResult confirm = MessageBox.Show(
+            $"Bạn có chắc chắn muốn hủy vé tháng {pass.Code} ({pass.LicensePlate}) không?",
+            "Xác nhận hủy vé",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question
+        );
+        if (confirm != DialogResult.Yes) return;
+
         await SaveAsync(() => _service.CancelAsync(pass.PassId), "Đã hủy vé tháng.");
     }
 }

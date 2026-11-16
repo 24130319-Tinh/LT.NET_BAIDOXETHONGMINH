@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Database;
@@ -41,7 +42,7 @@ public static class DatabaseSeedHelper
         }
     }
 
-    // Hàm nạp bộ dữ liệu khởi tạo và dữ liệu kiểm thử mẫu vào cơ sở dữ liệu
+    // Hàm nạp bộ dữ liệu khởi tạo và dữ liệu kiểm thử mẫu quy mô 6 khu, 96 ô và 96 thẻ vào CSDL
     public static void SeedTestData()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
@@ -49,7 +50,8 @@ public static class DatabaseSeedHelper
 
         try
         {
-            const string seedSql = @"
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.AppendLine(@"
                 INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, IsActive) VALUES
                 (1, 'admin', '123456', 'Admin Tính', '0901234567', 1);
 
@@ -66,52 +68,35 @@ public static class DatabaseSeedHelper
                 UPDATE PricingRules SET LostCardPenalty = 50000 WHERE LostCardPenalty <> 50000;
 
                 INSERT OR IGNORE INTO ParkingZones (ZoneId, ZoneName, VehicleTypeId, MaxCapacity) VALUES
-                ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 12),
-                ('ZONE_B', 'Khu B - Ô tô', 'OTO', 8);
+                ('ZONE_A', 'Khu A - Xe máy', 'XEMAY', 20),
+                ('ZONE_B', 'Khu B - Xe máy', 'XEMAY', 20),
+                ('ZONE_C', 'Khu C - Xe máy', 'XEMAY', 20),
+                ('ZONE_D', 'Khu D - Xe máy', 'XEMAY', 20),
+                ('ZONE_E', 'Khu E - Ô tô', 'OTO', 8),
+                ('ZONE_F', 'Khu F - Ô tô', 'OTO', 8);");
 
-                INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES
-                ('A-01', 'ZONE_A', 'Occupied', '59X3-112.23'),
-                ('A-02', 'ZONE_A', 'Available', NULL),
-                ('A-03', 'ZONE_A', 'Available', NULL),
-                ('A-04', 'ZONE_A', 'Available', NULL),
-                ('A-05', 'ZONE_A', 'Available', NULL),
-                ('A-06', 'ZONE_A', 'Available', NULL),
-                ('A-07', 'ZONE_A', 'Available', NULL),
-                ('A-08', 'ZONE_A', 'Available', NULL),
-                ('A-09', 'ZONE_A', 'Available', NULL),
-                ('A-10', 'ZONE_A', 'Available', NULL),
-                ('A-11', 'ZONE_A', 'Available', NULL),
-                ('A-12', 'ZONE_A', 'Available', NULL),
-                ('B-01', 'ZONE_B', 'Occupied', '51H-999.99'),
-                ('B-02', 'ZONE_B', 'Occupied', '51G-456.78'),
-                ('B-03', 'ZONE_B', 'Available', NULL),
-                ('B-04', 'ZONE_B', 'Available', NULL),
-                ('B-05', 'ZONE_B', 'Available', NULL),
-                ('B-06', 'ZONE_B', 'Available', NULL),
-                ('B-07', 'ZONE_B', 'Available', NULL),
-                ('B-08', 'ZONE_B', 'Available', NULL);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_A", "A", 20);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_B", "B", 20);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_C", "C", 20);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_D", "D", 20);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_E", "E", 8);
+            AppendZoneSlotsSql(sqlBuilder, "ZONE_F", "F", 8);
 
-                INSERT OR IGNORE INTO ParkingCards (CardCode, LicensePlate, Status) VALUES
-                ('THE001', '59X3-112.23', 'InUse'),
-                ('THE002', '51G-456.78', 'InUse'),
-                ('THE003', '51H-999.99', 'InUse'),
-                ('THE004', NULL, 'Available'),
-                ('THE005', NULL, 'Available'),
-                ('THE006', NULL, 'Available'),
-                ('THE007', NULL, 'Available'),
-                ('THE008', NULL, 'Available'),
-                ('THE009', NULL, 'Available'),
-                ('THE010', NULL, 'Available'),
-                ('THE011', NULL, 'Available'),
-                ('THE012', NULL, 'Available'),
-                ('THE013', NULL, 'Available'),
-                ('THE014', NULL, 'Available'),
-                ('THE015', NULL, 'Available'),
-                ('THE016', NULL, 'Available'),
-                ('THE017', NULL, 'Available'),
-                ('THE018', NULL, 'Available'),
-                ('THE019', NULL, 'Available'),
-                ('THE020', NULL, 'Available');
+            sqlBuilder.AppendLine(@"
+                UPDATE ParkingSlots SET Status = 'Occupied', CurrentLicensePlate = '59X3-112.23' WHERE SlotCode = 'A-01';
+                UPDATE ParkingSlots SET Status = 'Occupied', CurrentLicensePlate = '51H-999.99' WHERE SlotCode = 'E-01';
+                UPDATE ParkingSlots SET Status = 'Occupied', CurrentLicensePlate = '51G-456.78' WHERE SlotCode = 'E-02';");
+
+            for (int i = 1; i <= 96; i++)
+            {
+                string cardCode = $"THE{i:D3}";
+                sqlBuilder.AppendLine($"INSERT OR IGNORE INTO ParkingCards (CardCode, LicensePlate, Status) VALUES ('{cardCode}', NULL, 'Available');");
+            }
+
+            sqlBuilder.AppendLine(@"
+                UPDATE ParkingCards SET Status = 'InUse', LicensePlate = '59X3-112.23' WHERE CardCode = 'THE001';
+                UPDATE ParkingCards SET Status = 'InUse', LicensePlate = '51G-456.78' WHERE CardCode = 'THE002';
+                UPDATE ParkingCards SET Status = 'InUse', LicensePlate = '51H-999.99' WHERE CardCode = 'THE003';
 
                 INSERT OR IGNORE INTO Customers (CustomerId, FullName, Phone, IdentityCard, CreatedAt) VALUES
                 (1, 'Nguyễn Văn An', '0909111222', '079204001111', datetime('now', 'localtime')),
@@ -130,31 +115,18 @@ public static class DatabaseSeedHelper
 
                 INSERT OR IGNORE INTO ParkingSessions
                 (
-                    SessionId,
-                    CardCode,
-                    LicensePlate,
-                    VehicleTypeId,
-                    SlotCode,
-                    CheckInTime,
-                    CheckOutTime,
-                    CheckInImagePath,
-                    CheckOutImagePath,
-                    CheckInUserId,
-                    CheckOutUserId,
-                    IsMonthlyPass,
-                    ParkingFee,
-                    PenaltyFee,
-                    TotalAmount,
-                    Status
+                    SessionId, CardCode, LicensePlate, VehicleTypeId, SlotCode, CheckInTime,
+                    CheckOutTime, CheckInImagePath, CheckOutImagePath, CheckInUserId, CheckOutUserId,
+                    IsMonthlyPass, ParkingFee, PenaltyFee, TotalAmount, Status
                 )
                 VALUES
-                (1, 'THE003', '51H-999.99', 'OTO', 'B-01', datetime('now', 'localtime', '-100 minutes'), NULL, NULL, NULL, 1, NULL, 1, 0, 0, 0, 'Parking'),
-                (2, 'THE002', '51G-456.78', 'OTO', 'B-02', datetime('now', 'localtime', '-185 minutes'), NULL, NULL, NULL, 1, NULL, 0, 0, 0, 0, 'Parking'),
-                (3, 'THE001', '59X3-112.23', 'XEMAY', 'A-01', datetime('now', 'localtime', '-135 minutes'), NULL, NULL, NULL, 1, NULL, 0, 0, 0, 0, 'Parking');";
+                (1, 'THE003', '51H-999.99', 'OTO', 'E-01', datetime('now', 'localtime', '-100 minutes'), NULL, NULL, NULL, 1, NULL, 1, 0, 0, 0, 'Parking'),
+                (2, 'THE002', '51G-456.78', 'OTO', 'E-02', datetime('now', 'localtime', '-185 minutes'), NULL, NULL, NULL, 1, NULL, 0, 0, 0, 0, 'Parking'),
+                (3, 'THE001', '59X3-112.23', 'XEMAY', 'A-01', datetime('now', 'localtime', '-135 minutes'), NULL, NULL, NULL, 1, NULL, 0, 0, 0, 0, 'Parking');");
 
             using SqliteCommand cmd = connection.CreateCommand();
             cmd.Transaction = transaction;
-            cmd.CommandText = seedSql;
+            cmd.CommandText = sqlBuilder.ToString();
             cmd.ExecuteNonQuery();
 
             transaction.Commit();
@@ -163,6 +135,16 @@ public static class DatabaseSeedHelper
         {
             transaction.Rollback();
             throw;
+        }
+    }
+
+    // Hàm sinh các câu lệnh SQL tạo danh sách ô đỗ trống cho một khu vực theo tiền tố và sức chứa
+    private static void AppendZoneSlotsSql(StringBuilder sqlBuilder, string zoneId, string prefix, int capacity)
+    {
+        for (int i = 1; i <= capacity; i++)
+        {
+            string slotCode = $"{prefix}-{i:D2}";
+            sqlBuilder.AppendLine($"INSERT OR IGNORE INTO ParkingSlots (SlotCode, ZoneId, Status, CurrentLicensePlate) VALUES ('{slotCode}', '{zoneId}', 'Available', NULL);");
         }
     }
 

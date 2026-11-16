@@ -1,3 +1,5 @@
+using BAIDOXETHONGMINH.Services;
+
 namespace BAIDOXETHONGMINH.GUI;
 
 public partial class MainLayout : Form
@@ -44,6 +46,10 @@ public partial class MainLayout : Form
             {
                 oldCheckInForm.SlotCapacityChanged -= OnSlotCapacityChanged;
             }
+            else if (_currentRightForm is ParkingMapForm)
+            {
+                AppService.Map.MapChanged -= OnParkingMapChanged;
+            }
 
             _currentRightForm.Close();
             _currentRightForm.Dispose();
@@ -54,9 +60,31 @@ public partial class MainLayout : Form
         {
             newCheckInForm.SlotCapacityChanged += OnSlotCapacityChanged;
         }
+        else if (childForm is ParkingMapForm)
+        {
+            AppService.Map.MapChanged += OnParkingMapChanged;
+        }
 
         _currentRightForm = childForm;
         EmbedFormIntoPanel(childForm, pnlRightContent);
+    }
+
+    // Hàm cập nhật lại số chỗ trống trên Sidebar khi Sơ đồ bãi có thay đổi ô đỗ hoặc bảo trì
+    private void OnParkingMapChanged()
+    {
+        if (IsDisposed || !IsHandleCreated)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(new Action(OnParkingMapChanged));
+            return;
+        }
+
+        (int AvailableSlots, int TotalSlots) summary = new ParkingService().GetSlotCapacitySummary();
+        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots);
     }
 
     // Hàm nhận sự kiện thay đổi số chỗ trống từ CheckInOutForm và cập nhật lên Sidebar

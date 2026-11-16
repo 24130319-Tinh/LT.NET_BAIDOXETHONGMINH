@@ -10,6 +10,26 @@ public class CustomerService
 
     public Task<List<Customer>> GetAllAsync() => _repo.GetAllAsync();
 
+    // Hàm lấy thông tin một khách hàng theo mã khách hàng
+    public Task<Customer?> GetByIdAsync(int customerId)
+    {
+        return _repo.GetByIdAsync(customerId);
+    }
+
+    // Hàm kiểm tra hợp lệ dữ liệu khách hàng trước khi lưu đồng bộ chung Transaction đăng ký vé tháng
+    public static Customer CreateValidatedCustomer(string fullName, string phone, string identityCard)
+    {
+        Customer input = new Customer
+        {
+            FullName = fullName,
+            Phone = phone,
+            IdentityCard = identityCard,
+            CreatedAt = DateTime.Now
+        };
+        Validate(input);
+        return input;
+    }
+
     public Task<List<Customer>> SearchAsync(string keyword)
     {
         keyword = (keyword ?? "").Trim();

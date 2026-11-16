@@ -1,4 +1,6 @@
+using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.Services;
 
 namespace BAIDOXETHONGMINH.GUI;
 
@@ -19,6 +21,7 @@ public class PricingService
         return rule;
     }
 
+    // Hàm kiểm tra hợp lệ và lưu cấu hình bảng giá (cố định tiền phạt mất thẻ ở mức 50.000đ)
     public async Task SaveAsync(PricingRule rule)
     {
         if (string.IsNullOrWhiteSpace(rule.VehicleTypeId)) throw new ServiceException("Phải chọn loại xe.");
@@ -26,10 +29,11 @@ public class PricingService
             rule.MonthlyPassPrice < 0 || rule.LostCardPenalty < 0)
             throw new ServiceException("Giá không được âm.");
 
-        var types = await _repo.GetVehicleTypesAsync();
+        List<VehicleType> types = await _repo.GetVehicleTypesAsync();
         if (!types.Any(t => t.VehicleTypeId == rule.VehicleTypeId))
             throw new ServiceException($"Loại xe '{rule.VehicleTypeId}' không tồn tại.");
 
+        rule.LostCardPenalty = FeeCalculationService.UnifiedLostCardPenalty;
         rule.UpdatedAt = DateTime.Now;
         await _repo.SavePricingRuleAsync(rule);
     }

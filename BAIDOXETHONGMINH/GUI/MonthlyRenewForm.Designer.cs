@@ -166,9 +166,9 @@ partial class MonthlyRenewForm
         lblRenewTitle.Location = new Point(18, 16);
         lblRenewTitle.AutoSize = true;
 
-        AddInfoLine(pnlRenewCard, "Mã vé & Biển số:", out lblSelPassCode, "MP-01 (51H-999.99)", 50);
-        AddInfoLine(pnlRenewCard, "Chủ xe:", out lblSelOwner, "Trần Minh Hoàng", 78);
-        AddInfoLine(pnlRenewCard, "Ngày hết hạn cũ:", out lblSelOldEnd, "01/11/2026", 106);
+        AddInfoLine(pnlRenewCard, "Mã vé & Biển số:", out lblSelPassCode, "—", 50);
+        AddInfoLine(pnlRenewCard, "Chủ xe:", out lblSelOwner, "—", 78);
+        AddInfoLine(pnlRenewCard, "Ngày hết hạn cũ:", out lblSelOldEnd, "—", 106);
 
         var lblMo = new Label
         {
@@ -201,8 +201,8 @@ partial class MonthlyRenewForm
         pnlRenewSummary.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         pnlRenewSummary.BackColor = Color.FromArgb(236, 253, 245);
 
-        AddInfoLine(pnlRenewSummary, "Ngày hết hạn mới:", out lblNewEndVal, "01/12/2026", 10);
-        AddInfoLine(pnlRenewSummary, "Số tiền thu gia hạn:", out lblRenewFeeVal, "1.200.000 VNĐ", 36);
+        AddInfoLine(pnlRenewSummary, "Ngày hết hạn mới:", out lblNewEndVal, "—", 10);
+        AddInfoLine(pnlRenewSummary, "Số tiền thu gia hạn:", out lblRenewFeeVal, "—", 36);
         pnlRenewCard.Controls.Add(pnlRenewSummary);
 
         btnConfirmRenew.Text = "Xác Nhận Gia Hạn & Thu Phí";
@@ -234,18 +234,22 @@ partial class MonthlyRenewForm
 
         pnlUpdPhoneBox.Location = new Point(18, 70);
         pnlUpdPhoneBox.Size = new Size(180, 34);
+        pnlUpdPhoneBox.BackColor = Color.White;
         pnlUpdPhoneBox.Padding = new Padding(10, 7, 10, 5);
         txtUpdPhone.Dock = DockStyle.Fill;
         txtUpdPhone.BorderStyle = BorderStyle.None;
-        txtUpdPhone.Text = "0908123456";
+        txtUpdPhone.Text = string.Empty;
+        txtUpdPhone.Enabled = false;
         pnlUpdPhoneBox.Controls.Add(txtUpdPhone);
 
         pnlUpdBrandBox.Location = new Point(210, 70);
         pnlUpdBrandBox.Size = new Size(182, 34);
+        pnlUpdBrandBox.BackColor = Color.White;
         pnlUpdBrandBox.Padding = new Padding(10, 7, 10, 5);
         txtUpdBrand.Dock = DockStyle.Fill;
         txtUpdBrand.BorderStyle = BorderStyle.None;
-        txtUpdBrand.Text = "Mazda CX-5 Trắng";
+        txtUpdBrand.Text = string.Empty;
+        txtUpdBrand.Enabled = false;
         pnlUpdBrandBox.Controls.Add(txtUpdBrand);
 
         btnSaveUpdate.Text = "Lưu thay đổi";

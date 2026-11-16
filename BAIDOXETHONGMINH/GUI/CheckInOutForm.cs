@@ -330,12 +330,14 @@ public partial class CheckInOutForm : Form
         }
 
         string? imagePath = string.IsNullOrWhiteSpace(txtImagePathIn.Text) ? null : txtImagePathIn.Text.Trim();
+        int currentUserId = AppService.CurrentUserId ?? 1;
         (bool IsSuccess, string Message) result = _parkingService.CheckInVehicle(
             licensePlate,
             selectedVehicleType.VehicleTypeId,
             selectedCard.CardCode,
             selectedSlot.SlotCode,
-            imagePath
+            imagePath,
+            currentUserId
         );
 
         MessageBox.Show(
@@ -571,10 +573,12 @@ public partial class CheckInOutForm : Form
             return;
         }
 
+        int currentUserId = AppService.CurrentUserId ?? 1;
         (bool IsSuccess, string Message) result = _parkingService.ConfirmCheckOut(
             _currentCheckOutPreview.CardCode,
             isLostCard,
-            isLostCard ? cccdText : null
+            isLostCard ? cccdText : null,
+            checkOutUserId: currentUserId
         );
 
         MessageBox.Show(

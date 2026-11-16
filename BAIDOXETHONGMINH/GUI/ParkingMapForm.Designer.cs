@@ -114,28 +114,30 @@ partial class ParkingMapForm
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
         tlpLeftZones.Dock = DockStyle.Fill;
+        tlpLeftZones.AutoScroll = true;
+        tlpLeftZones.Padding = new Padding(0, 0, 6, 6);
         tlpLeftZones.ColumnCount = 1;
         tlpLeftZones.RowCount = 2;
         tlpLeftZones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        tlpLeftZones.RowStyles.Add(new RowStyle(SizeType.Percent, 55F));
-        tlpLeftZones.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
+        tlpLeftZones.RowStyles.Add(new RowStyle(SizeType.Absolute, 268F));
+        tlpLeftZones.RowStyles.Add(new RowStyle(SizeType.Absolute, 268F));
 
         pnlZoneA.Dock = DockStyle.Fill;
         pnlZoneA.BackColor = Color.White;
         pnlZoneA.Margin = new Padding(6);
         pnlZoneA.Padding = new Padding(16);
 
-        lblZoneATitle.Text = "Khu A — Xe Máy (12 vị trí)";
+        lblZoneATitle.Text = "Khu A — Xe Máy (20 vị trí)";
         lblZoneATitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
         lblZoneATitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblZoneATitle.Dock = DockStyle.Top;
         lblZoneATitle.Height = 30;
 
         tlpGridA.Dock = DockStyle.Fill;
-        tlpGridA.ColumnCount = 6;
-        tlpGridA.RowCount = 2;
-        for (int i = 0; i < 6; i++) tlpGridA.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.66F));
-        for (int r = 0; r < 2; r++) tlpGridA.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        tlpGridA.ColumnCount = 5;
+        tlpGridA.RowCount = 4;
+        for (int i = 0; i < 5; i++) tlpGridA.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+        for (int r = 0; r < 4; r++) tlpGridA.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
         pnlZoneA.Controls.Add(tlpGridA);
         pnlZoneA.Controls.Add(lblZoneATitle);
@@ -145,17 +147,17 @@ partial class ParkingMapForm
         pnlZoneB.Margin = new Padding(6);
         pnlZoneB.Padding = new Padding(16);
 
-        lblZoneBTitle.Text = "Khu B — Ô Tô (8 vị trí)";
+        lblZoneBTitle.Text = "Khu B — Xe Máy (20 vị trí)";
         lblZoneBTitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
         lblZoneBTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblZoneBTitle.Dock = DockStyle.Top;
         lblZoneBTitle.Height = 30;
 
         tlpGridB.Dock = DockStyle.Fill;
-        tlpGridB.ColumnCount = 4;
-        tlpGridB.RowCount = 2;
-        for (int i = 0; i < 4; i++) tlpGridB.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-        for (int r = 0; r < 2; r++) tlpGridB.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        tlpGridB.ColumnCount = 5;
+        tlpGridB.RowCount = 4;
+        for (int i = 0; i < 5; i++) tlpGridB.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+        for (int r = 0; r < 4; r++) tlpGridB.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
         pnlZoneB.Controls.Add(tlpGridB);
         pnlZoneB.Controls.Add(lblZoneBTitle);

@@ -60,19 +60,22 @@ public partial class MonthlyPassForm : Form
 
     private int Months => cboMonths.SelectedIndex switch { 1 => 3, 2 => 6, _ => 1 };
 
+    // Hàm tính lại phí đăng ký vé tháng khi người dùng thay đổi loại xe hoặc số tháng
     private async void RecalcFee()
     {
-if (!_ready) return;
+        if (!_ready) return;
 
-if (cboVehicleType.SelectedValue is not string typeId)
-{
-    ++_feeVersion;
-    lblFeeValue.Text = "Chưa chọn loại xe";
-    return;
-}        int version = ++_feeVersion;
+        if (cboVehicleType.SelectedValue is not string typeId)
+        {
+            ++_feeVersion;
+            lblFeeValue.Text = "Chưa chọn loại xe";
+            return;
+        }
+
+        int version = ++_feeVersion;
         try
         {
-            var fee = await _service.GetFeeAsync(typeId, Months);
+            decimal fee = await _service.GetFeeAsync(typeId, Months);
             if (!IsDisposed && version == _feeVersion) lblFeeValue.Text = Fmt.Vnd(fee);
         }
         catch (Exception)
@@ -103,6 +106,7 @@ if (cboVehicleType.SelectedValue is not string typeId)
         finally { _saving = false; if (!IsDisposed) btnRegister.Enabled = true; }
     }
 
+    // Hàm xóa trắng các ô nhập và đặt lại lựa chọn mặc định trên Form đăng ký vé tháng
     private void BtnClear_Click(object? sender, EventArgs e)
     {
         txtName.Clear();
@@ -111,5 +115,7 @@ if (cboVehicleType.SelectedValue is not string typeId)
         txtPlate.Clear();
         txtBrand.Clear();
         txtStartDate.Text = DateTime.Today.ToString("dd/MM/yyyy");
+        if (cboVehicleType.Items.Count > 0) cboVehicleType.SelectedIndex = 0;
+        if (cboMonths.Items.Count > 0) cboMonths.SelectedIndex = 0;
     }
 }

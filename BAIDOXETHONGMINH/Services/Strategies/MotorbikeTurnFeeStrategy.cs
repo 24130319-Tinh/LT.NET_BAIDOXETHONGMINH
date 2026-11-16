@@ -23,7 +23,7 @@ public class MotorbikeTurnFeeStrategy : IFeeCalculationStrategy
             : 10000m;
 
         int nightsCrossed = Math.Max(0, (checkOutTime.Date - checkInTime.Date).Days);
-        bool isOvernightTurn = nightsCrossed > 0 || checkInTime.Hour >= 22 || checkOutTime.Hour < 6;
+        bool isOvernightTurn = nightsCrossed > 0 || checkInTime.Hour >= 22 || checkOutTime.Hour >= 22 || checkOutTime.Hour < 6;
 
         decimal motorbikeParkingFee;
         string motorbikeTicketDisplay;

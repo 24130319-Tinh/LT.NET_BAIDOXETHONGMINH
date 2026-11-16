@@ -1,3 +1,4 @@
+using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.DTO.Entities;
 
 namespace BAIDOXETHONGMINH.GUI;
@@ -59,10 +60,17 @@ public class ParkingCardService
         await _repo.DeleteCardAsync(card.CardCode);
     }
 
+    // Hàm thay đổi trạng thái thẻ xe nhưng chặn báo mất hoặc khóa trực tiếp thẻ đang gắn với xe trong bãi
     private async Task ChangeStatusAsync(string cardCode, string newStatus, string? plate, bool keepPlate = false)
     {
-        var card = await GetRequiredAsync(cardCode);
-        if (!Allowed.TryGetValue(card.Status, out var next) || !next.Contains(newStatus))
+        ParkingCard card = await GetRequiredAsync(cardCode);
+        if ((newStatus == CardStatus.Lost || newStatus == CardStatus.Locked) &&
+            await _repo.IsCardCurrentlyInActiveSessionAsync(card.CardCode))
+        {
+            throw new ServiceException($"Thẻ '{card.CardCode}' đang gắn với xe chưa ra bãi. Hãy xử lý mất thẻ tại màn hình Xe Vào / Ra.");
+        }
+
+        if (!Allowed.TryGetValue(card.Status, out string[]? next) || !next.Contains(newStatus))
             throw new ServiceException($"Thẻ '{card.CardCode}' đang ở trạng thái '{Fmt.CardText(card.Status)}', không thể chuyển sang '{Fmt.CardText(newStatus)}'.");
 
         card.Status = newStatus;
