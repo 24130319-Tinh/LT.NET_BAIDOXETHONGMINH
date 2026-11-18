@@ -24,6 +24,12 @@ partial class SearchReportForm
     private Button btnSearch = null!;
     private Button btnExportCsv = null!;
 
+
+    //NV6: Thêm button "Đóng ca trực" và panel chứa các hành động liên quan đến ca trực
+    private Button btnCloseShift = null!;
+    private Panel pnlShiftActions = null!;
+
+    //
     private Panel pnlGridCard = null!;
     private DataGridView dgvHistory = null!;
 
@@ -50,7 +56,9 @@ partial class SearchReportForm
         pnlShiftComboBox = new Panel();
         cboShiftFilter = new ComboBox();
         btnSearch = new Button();
-        btnExportCsv = new Button();
+        btnExportCsv = new Button();    
+        btnCloseShift = new Button();
+        pnlShiftActions = new Panel();
 
         pnlGridCard = new Panel();
         dgvHistory = new DataGridView();
@@ -86,6 +94,9 @@ partial class SearchReportForm
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 118F));
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 88F));
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        //Thêm hàng mới cho nút "Đóng ca trực" Row4
+        tlpMain.RowCount = 4;
+        tlpMain.RowStyles.Insert(2, new RowStyle(SizeType.Absolute, 54F));
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
@@ -191,6 +202,34 @@ partial class SearchReportForm
         pnlFilterCard.Controls.Add(btnSearch);
         pnlFilterCard.Controls.Add(btnExportCsv);
 
+
+
+        // NV6: Giao diện nút Kết thúc ca
+        pnlShiftActions.Dock = DockStyle.Fill;
+        pnlShiftActions.BackColor = Color.White;
+        pnlShiftActions.Margin = new Padding(6);
+        pnlShiftActions.Padding = new Padding(12, 6, 12, 6);
+
+        btnCloseShift.Name = "btnCloseShift";
+        btnCloseShift.Text = "Kết thúc ca";
+        btnCloseShift.Size = new Size(150, 34);
+        btnCloseShift.Dock = DockStyle.Right;
+
+        btnCloseShift.FlatStyle = FlatStyle.Flat;
+        btnCloseShift.FlatAppearance.BorderSize = 0;
+        btnCloseShift.BackColor = Color.FromArgb(220, 38, 38);
+        btnCloseShift.ForeColor = Color.White;
+        btnCloseShift.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        btnCloseShift.Cursor = Cursors.Hand;
+
+        // Gắn sự kiện khi nhấn nút
+        btnCloseShift.Click += BtnCloseShift_Click;
+
+        // Đưa nút vào panel
+        pnlShiftActions.Controls.Add(btnCloseShift);
+        
+
+        // Row 3: History Grid Card
         pnlGridCard.Dock = DockStyle.Fill;
         pnlGridCard.BackColor = Color.White;
         pnlGridCard.Margin = new Padding(6);
@@ -202,8 +241,10 @@ partial class SearchReportForm
 
         tlpMain.Controls.Add(tlpKpiRow, 0, 0);
         tlpMain.Controls.Add(pnlFilterCard, 0, 1);
-        tlpMain.Controls.Add(pnlGridCard, 0, 2);
 
+        tlpMain.Controls.Add(pnlShiftActions, 0, 2);
+
+        tlpMain.Controls.Add(pnlGridCard, 0, 3);
         AutoScaleMode = AutoScaleMode.Font;
         FormBorderStyle = FormBorderStyle.None;
         Controls.Add(tlpMain);
