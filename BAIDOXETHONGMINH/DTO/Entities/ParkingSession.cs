@@ -1,5 +1,9 @@
 namespace BAIDOXETHONGMINH.DTO.Entities;
 
+/// <summary>
+/// Bảng ParkingSessions: Lưu thông tin mỗi lượt xe vào / ra bãi
+/// Status: "Parking" (Đang gửi trong bãi), "Completed" (Đã lấy xe ra)
+/// </summary>
 public class ParkingSession
 {
     public int SessionId { get; set; }
