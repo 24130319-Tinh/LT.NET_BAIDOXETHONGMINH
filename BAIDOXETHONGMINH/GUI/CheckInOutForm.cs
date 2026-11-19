@@ -212,8 +212,8 @@ public partial class CheckInOutForm : Form
         using Font subFont = new Font("Segoe UI", 8.5F, FontStyle.Regular);
         StringFormat sf = new StringFormat { Alignment = StringAlignment.Center };
 
-        g.DrawString("Khung hiển thị hình xe tải lên", titleFont, Brushes.Black, new RectangleF(0, cy + 22, picVehicleIn.Width, 22), sf);
-        g.DrawString("Bấm \"Chọn hình từ máy...\" để mở hộp thoại chọn file ảnh", subFont, Brushes.DimGray, new RectangleF(0, cy + 42, picVehicleIn.Width, 22), sf);
+        g.DrawString("Hình ảnh phương tiện lúc vào bãi", titleFont, Brushes.Black, new RectangleF(0, cy + 22, picVehicleIn.Width, 22), sf);
+        g.DrawString("Nhấn vào khung này hoặc nút \"Chọn hình từ máy...\" để tải ảnh xe", subFont, Brushes.DimGray, new RectangleF(0, cy + 42, picVehicleIn.Width, 22), sf);
     }
 
     // Hàm mở hộp thoại OpenFileDialog để chọn file hình ảnh xe từ máy tính và hiển thị lên khung Làn Vào
@@ -297,13 +297,13 @@ public partial class CheckInOutForm : Form
         picVehicleIn.Invalidate();
     }
 
-    // Hàm xử lý sự kiện bấm nút [F1] Cho Xe Vào Bãi & Lưu CSDL
+    // Hàm xử lý sự kiện bấm nút [F1] Xác Nhận Cho Xe Vào Bãi
     private void BtnSubmitCheckIn_Click(object? sender, EventArgs e)
     {
         string licensePlate = txtPlateIn.Text.Trim();
         if (string.IsNullOrWhiteSpace(licensePlate))
         {
-            MessageBox.Show("Vui lòng nhập Biển số xe thủ công trước khi lưu!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Vui lòng nhập Biển số xe trước khi cho xe vào bãi!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             txtPlateIn.Focus();
             return;
         }

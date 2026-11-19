@@ -74,7 +74,7 @@ partial class MenuForm
         lblAppName.Location = new Point(6, 10);
         lblAppName.AutoSize = true;
 
-        lblAppSub.Text = "Menu Quản Lý Desktop";
+        lblAppSub.Text = "Hệ thống Quản lý & Trực ca";
         lblAppSub.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular);
         lblAppSub.ForeColor = Color.FromArgb(148, 163, 184);
         lblAppSub.Location = new Point(6, 36);
@@ -89,28 +89,28 @@ partial class MenuForm
         flpMenu.AutoScroll = true;
         flpMenu.Padding = new Padding(0, 8, 0, 8);
 
-        ConfigureMenuButton(btnCheckInOut, "1. Kiểm soát Xe Vào / Ra", false);
+        ConfigureMenuButton(btnCheckInOut, "Kiểm soát Xe Vào / Ra", false);
         btnCheckInOut.Click += (s, e) => SelectMenuItem(btnCheckInOut, "CheckInOut");
 
-        ConfigureMenuButton(btnParkingMap, "2. Sơ đồ bãi & Bảng giá", false);
+        ConfigureMenuButton(btnParkingMap, "Sơ đồ bãi & Bảng giá", false);
         btnParkingMap.Click += (s, e) => SelectMenuItem(btnParkingMap, "ParkingMap");
 
-        lblMonthlyGroup.Text = "3. QUẢN LÝ VÉ THÁNG";
+        lblMonthlyGroup.Text = "QUẢN LÝ VÉ THÁNG";
         lblMonthlyGroup.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
         lblMonthlyGroup.ForeColor = Color.FromArgb(148, 163, 184);
         lblMonthlyGroup.Margin = new Padding(6, 12, 0, 4);
         lblMonthlyGroup.AutoSize = true;
 
-        ConfigureMenuButton(btnMonthlyRegister, "   ↳ 3.1 Đăng ký Vé tháng mới", true);
+        ConfigureMenuButton(btnMonthlyRegister, "   ↳ Đăng ký Vé tháng mới", true);
         btnMonthlyRegister.Click += (s, e) => SelectMenuItem(btnMonthlyRegister, "MonthlyRegister");
 
-        ConfigureMenuButton(btnMonthlyRenew, "   ↳ 3.2 Gia hạn & Cập nhật vé", true);
+        ConfigureMenuButton(btnMonthlyRenew, "   ↳ Gia hạn & Cập nhật vé", true);
         btnMonthlyRenew.Click += (s, e) => SelectMenuItem(btnMonthlyRenew, "MonthlyRenew");
 
-        ConfigureMenuButton(btnCustomer, "4. Quản lý Khách hàng", false);
+        ConfigureMenuButton(btnCustomer, "Quản lý Khách hàng", false);
         btnCustomer.Click += (s, e) => SelectMenuItem(btnCustomer, "Customer");
 
-        ConfigureMenuButton(btnSearchReport, "5. Tra cứu & Thống kê", false);
+        ConfigureMenuButton(btnSearchReport, "Tra cứu & Báo cáo ca", false);
         btnSearchReport.Click += (s, e) => SelectMenuItem(btnSearchReport, "SearchReport");
 
         flpMenu.Controls.Add(btnCheckInOut);

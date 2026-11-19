@@ -150,19 +150,19 @@ partial class CheckInOutForm
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
         pnlHeader.Padding = new Padding(16, 10, 16, 6);
 
-        lblTitle.Text = "BÀN ĐIỀU KHIỂN XE VÀO / XE RA (CHỌN HÌNH TỪ MÁY & NHẬP THỦ CÔNG)";
+        lblTitle.Text = "KIỂM SOÁT XE VÀO / XE RA";
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);
         lblTitle.AutoSize = true;
 
-        lblSubtitle.Text = "Thành viên 1 • Không dùng Camera — Dùng OpenFileDialog chọn file ảnh xe và nhập tay các trường thông tin";
+        lblSubtitle.Text = "Ghi nhận phương tiện vào bãi, cấp thẻ và đối chiếu hình ảnh thu phí khi xe ra";
         lblSubtitle.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
         lblSubtitle.ForeColor = Color.FromArgb(100, 116, 139);
         lblSubtitle.Location = new Point(16, 36);
         lblSubtitle.AutoSize = true;
 
-        lblShortcutBadge.Text = "Phím tắt PC: F1 / F2";
+        lblShortcutBadge.Text = "Phím tắt: F1 (Vào) • F2 (Ra)";
         lblShortcutBadge.Font = new Font("Consolas", 9F, FontStyle.Bold);
         lblShortcutBadge.ForeColor = Color.FromArgb(51, 65, 85);
         lblShortcutBadge.BackColor = Color.White;
@@ -216,7 +216,7 @@ partial class CheckInOutForm
         txtImagePathIn.BackColor = Color.White;
         txtImagePathIn.ReadOnly = true;
         txtImagePathIn.Font = new Font("Consolas", 9F);
-        txtImagePathIn.PlaceholderText = @"Đường dẫn file ảnh (C:\Images\xe_01.jpg)...";
+        txtImagePathIn.PlaceholderText = "Chưa chọn hình ảnh phương tiện...";
         pnlImagePathBox.Controls.Add(txtImagePathIn);
 
         btnBrowseImage.Text = "Chọn hình từ máy...";
@@ -331,7 +331,7 @@ partial class CheckInOutForm
         lblPassStatusIn.Dock = DockStyle.Fill;
         lblPassStatusIn.TextAlign = ContentAlignment.MiddleLeft;
 
-        lblPassTestHint.Text = "Kiểm tra từ CSDL";
+        lblPassTestHint.Text = "Tự động đối chiếu";
         lblPassTestHint.Font = new Font("Consolas", 8.5F, FontStyle.Bold);
         lblPassTestHint.ForeColor = Color.FromArgb(71, 85, 105);
         lblPassTestHint.Dock = DockStyle.Right;
@@ -342,7 +342,7 @@ partial class CheckInOutForm
         pnlPassStatusBanner.Controls.Add(lblPassStatusIn);
         pnlPassStatusBanner.Controls.Add(lblPassTestHint);
 
-        btnSubmitCheckIn.Text = "[F1] Cho Xe Vào Bãi & Lưu CSDL";
+        btnSubmitCheckIn.Text = "[F1] Xác Nhận Cho Xe Vào Bãi";
         btnSubmitCheckIn.Location = new Point(18, 462);
         btnSubmitCheckIn.Size = new Size(344, 44);
         btnSubmitCheckIn.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;

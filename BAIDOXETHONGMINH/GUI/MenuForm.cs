@@ -76,6 +76,13 @@ public partial class MenuForm : Form
         lblShiftSlots.Text = $"Chỗ trống: {availableSlots} / {totalSlots} ô";
     }
 
+    // Hàm cập nhật tên người quản lý và tên ca trực đang mở lên thẻ thông tin ở Sidebar
+    public void UpdateShiftInfo(string adminName, string shiftName)
+    {
+        lblShiftAdmin.Text = $"Quản lý: {adminName}";
+        lblShiftTime.Text = $"Ca: {shiftName}";
+    }
+
     // Hàm làm nổi bật nút Menu đang được chọn và đặt lại màu cho nút trước đó
     private void HighlightButton(Button clickedButton)
     {

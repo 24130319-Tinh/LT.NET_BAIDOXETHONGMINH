@@ -52,8 +52,8 @@ public static class DatabaseSeedHelper
         {
             StringBuilder sqlBuilder = new StringBuilder();
             sqlBuilder.AppendLine(@"
-                INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, IsActive) VALUES
-                (1, 'admin', '123456', 'Admin Tính', '0901234567', 1);
+                INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive) VALUES
+                (1, 'admin', '1', 'Admin Tính', '0901234567', 'admin@gmail.com', '079204009999', 'NV01', 1);
 
                 INSERT OR IGNORE INTO VehicleTypes (VehicleTypeId, TypeName, Description) VALUES
                 ('XEMAY', 'Xe máy', 'Xe máy 2 bánh / Xe tay ga'),

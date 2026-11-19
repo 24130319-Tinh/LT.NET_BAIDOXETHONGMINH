@@ -128,9 +128,9 @@ public partial class ParkingMapForm : Form
         lblDetCodeVal.Text = slot.Code;
         lblDetStatusVal.Text = slot.Status switch
         {
-            "Occupied"    => "Đang có xe (Occupied)",
-            "Maintenance" => "Đang bảo trì (Maintenance)",
-            _             => "Đang trống (Available)"
+            "Occupied"    => "Đang có xe",
+            "Maintenance" => "Đang bảo trì",
+            _             => "Đang trống"
         };
         lblDetPlateVal.Text = slot.Plate ?? "—";
         btnToggleMaint.Enabled = slot.Status != SlotStatus.Occupied;

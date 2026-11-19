@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS Users (
     PasswordHash TEXT    NOT NULL,
     FullName     TEXT    NOT NULL,
     Phone        TEXT    NOT NULL DEFAULT '',
+    Email        TEXT    NOT NULL DEFAULT '',
+    IdentityCard TEXT    NOT NULL DEFAULT '',
+    EmployeeCode TEXT    NOT NULL DEFAULT '',
     IsActive     INTEGER NOT NULL DEFAULT 1
 );
 
@@ -160,9 +163,9 @@ CREATE TABLE IF NOT EXISTS PaymentTransactions (
 -- PHẦN 2: DỮ LIỆU TEST MẪU (BẠN TỰ THỰC THI ĐỂ NẠP VÀO DB)
 -- ============================================================
 
--- 1. Tài khoản nhân viên trực ca mặc định
-INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, IsActive) VALUES
-(1, 'admin', '123456', 'Admin Tính', '0901234567', 1);
+-- 1. Tài khoản nhân viên trực ca mặc định (Email: admin@gmail.com | Mật khẩu mặc định: 1 | Mã NV: NV01 | CCCD: 079204009999)
+INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive) VALUES
+(1, 'admin', '1', 'Admin Tính', '0901234567', 'admin@gmail.com', '079204009999', 'NV01', 1);
 
 -- 2. Danh mục 2 loại phương tiện (XEMAY, OTO)
 INSERT OR IGNORE INTO VehicleTypes (VehicleTypeId, TypeName, Description) VALUES

@@ -141,7 +141,7 @@ public class ParkingService
         bool inserted = _parkingRepository.InsertCheckInSession(session);
         if (!inserted)
         {
-            return (false, "Không thể lưu lượt xe vào CSDL (Thẻ hoặc Ô đỗ vừa được sử dụng). Vui lòng thử lại!");
+            return (false, "Không thể ghi nhận lượt xe vào bãi (Thẻ hoặc Ô đỗ vừa được sử dụng). Vui lòng thử lại!");
         }
 
         string passLabel = hasMonthlyPass ? "Khách Vé Tháng (Miễn phí lượt)" : "Khách Vãng Lai (Vé lượt)";
@@ -290,11 +290,11 @@ public class ParkingService
 
         if (!completed)
         {
-            return (false, "Không thể hoàn tất thủ tục trả xe trong CSDL. Vui lòng kiểm tra và thử lại!");
+            return (false, "Không thể hoàn tất thủ tục trả xe trên hệ thống. Vui lòng kiểm tra và thử lại!");
         }
 
         string cardStateMessage = isLostCard
-            ? $"Thẻ {activeSession.CardCode} đã chuyển sang trạng thái Mất ('Lost') & lưu biên bản."
+            ? $"Thẻ {activeSession.CardCode} đã được khóa do báo mất và lưu biên bản."
             : $"Thẻ {activeSession.CardCode} và Ô {activeSession.SlotCode} đã được giải phóng.";
 
         return (

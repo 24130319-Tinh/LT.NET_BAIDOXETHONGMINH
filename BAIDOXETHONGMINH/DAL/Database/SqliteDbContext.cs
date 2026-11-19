@@ -49,7 +49,7 @@ public static class SqliteDbContext
         return connection;
     }
 
-    // Hàm khởi tạo cấu trúc 12 bảng cho CSDL, nạp dữ liệu mẫu nếu trống và nâng cấp bố cục 6 khu nếu cần
+    // Hàm khởi tạo cấu trúc 12 bảng cho CSDL, nâng cấp cột Users, nạp dữ liệu mẫu nếu trống và nâng cấp bố cục 6 khu
     public static void InitializeDatabase()
     {
         using (SqliteConnection connection = GetConnection())
@@ -59,8 +59,104 @@ public static class SqliteDbContext
             cmd.ExecuteNonQuery();
         }
 
+        EnsureUserSchemaAndDefaultCredentials();
         DatabaseSeedHelper.SeedTestDataIfEmpty();
         UpgradeParkingLayoutIfNeeded();
+    }
+
+    // Hàm đảm bảo bảng Users có đủ 3 cột Email, IdentityCard, EmployeeCode và khởi tạo thông tin đăng nhập mặc định (mật khẩu 1)
+    private static void EnsureUserSchemaAndDefaultCredentials()
+    {
+        using SqliteConnection connection = GetConnection();
+        using SqliteTransaction transaction = connection.BeginTransaction();
+
+        try
+        {
+            HashSet<string> existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (SqliteCommand infoCmd = connection.CreateCommand())
+            {
+                infoCmd.Transaction = transaction;
+                infoCmd.CommandText = "PRAGMA table_info(Users);";
+                using SqliteDataReader reader = infoCmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    existingColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (!existingColumns.Contains("Email"))
+            {
+                using SqliteCommand addEmailCmd = connection.CreateCommand();
+                addEmailCmd.Transaction = transaction;
+                addEmailCmd.CommandText = "ALTER TABLE Users ADD COLUMN Email TEXT NOT NULL DEFAULT '';";
+                addEmailCmd.ExecuteNonQuery();
+            }
+
+            if (!existingColumns.Contains("IdentityCard"))
+            {
+                using SqliteCommand addCccdCmd = connection.CreateCommand();
+                addCccdCmd.Transaction = transaction;
+                addCccdCmd.CommandText = "ALTER TABLE Users ADD COLUMN IdentityCard TEXT NOT NULL DEFAULT '';";
+                addCccdCmd.ExecuteNonQuery();
+            }
+
+            if (!existingColumns.Contains("EmployeeCode"))
+            {
+                using SqliteCommand addEmpCodeCmd = connection.CreateCommand();
+                addEmpCodeCmd.Transaction = transaction;
+                addEmpCodeCmd.CommandText = "ALTER TABLE Users ADD COLUMN EmployeeCode TEXT NOT NULL DEFAULT '';";
+                addEmpCodeCmd.ExecuteNonQuery();
+            }
+
+            using (SqliteCommand ensureSettingsCmd = connection.CreateCommand())
+            {
+                ensureSettingsCmd.Transaction = transaction;
+                ensureSettingsCmd.CommandText = "CREATE TABLE IF NOT EXISTS AppSettings (SettingKey TEXT PRIMARY KEY, SettingValue TEXT NOT NULL);";
+                ensureSettingsCmd.ExecuteNonQuery();
+            }
+
+            using (SqliteCommand ensureAdminCmd = connection.CreateCommand())
+            {
+                ensureAdminCmd.Transaction = transaction;
+                ensureAdminCmd.CommandText = @"
+                    INSERT OR IGNORE INTO Users (UserId, Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive)
+                    VALUES (1, 'admin', '1', 'Admin Tính', '0901234567', 'admin@gmail.com', '079204009999', 'NV01', 1);
+
+                    UPDATE Users
+                    SET Email = CASE WHEN TRIM(COALESCE(Email, '')) = '' THEN 'admin@gmail.com' ELSE Email END,
+                        IdentityCard = CASE WHEN TRIM(COALESCE(IdentityCard, '')) = '' THEN '079204009999' ELSE IdentityCard END,
+                        EmployeeCode = CASE WHEN TRIM(COALESCE(EmployeeCode, '')) = '' THEN 'NV01' ELSE EmployeeCode END,
+                        IsActive = 1
+                    WHERE Username = 'admin' OR UserId = 1;";
+                ensureAdminCmd.ExecuteNonQuery();
+            }
+
+            bool passwordInitialized = false;
+            using (SqliteCommand checkPwdFlagCmd = connection.CreateCommand())
+            {
+                checkPwdFlagCmd.Transaction = transaction;
+                checkPwdFlagCmd.CommandText = "SELECT SettingValue FROM AppSettings WHERE SettingKey = 'DefaultAdminPasswordV1_SetTo1' LIMIT 1;";
+                object? flagVal = checkPwdFlagCmd.ExecuteScalar();
+                passwordInitialized = flagVal != null && flagVal != DBNull.Value && string.Equals(flagVal.ToString(), "1", StringComparison.Ordinal);
+            }
+
+            if (!passwordInitialized)
+            {
+                using SqliteCommand setPwdCmd = connection.CreateCommand();
+                setPwdCmd.Transaction = transaction;
+                setPwdCmd.CommandText = @"
+                    UPDATE Users SET PasswordHash = '1' WHERE Username = 'admin' OR UserId = 1;
+                    INSERT OR REPLACE INTO AppSettings (SettingKey, SettingValue) VALUES ('DefaultAdminPasswordV1_SetTo1', '1');";
+                setPwdCmd.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch (Exception)
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     // Hàm nâng cấp tự động một lần từ bãi 2 khu (20 chỗ) lên 6 khu (A-D Xe máy 20 chỗ, E-F Ô tô 8 chỗ, 96 thẻ) mà giữ nguyên dữ liệu cũ
@@ -294,6 +390,9 @@ CREATE TABLE IF NOT EXISTS Users (
     PasswordHash TEXT    NOT NULL,
     FullName     TEXT    NOT NULL,
     Phone        TEXT    NOT NULL DEFAULT '',
+    Email        TEXT    NOT NULL DEFAULT '',
+    IdentityCard TEXT    NOT NULL DEFAULT '',
+    EmployeeCode TEXT    NOT NULL DEFAULT '',
     IsActive     INTEGER NOT NULL DEFAULT 1
 );
 

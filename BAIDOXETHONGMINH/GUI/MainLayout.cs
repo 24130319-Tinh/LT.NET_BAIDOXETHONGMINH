@@ -1,3 +1,4 @@
+using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.Services;
 
 namespace BAIDOXETHONGMINH.GUI;
@@ -6,6 +7,8 @@ public partial class MainLayout : Form
 {
     private readonly MenuForm _menuForm;
     private Form? _currentRightForm;
+
+    public bool IsLogoutRequested { get; private set; }
 
     // Hàm khởi tạo khung bố cục chính MainLayout, nhúng Menu bên trái và mở CheckInOutForm bên phải
     public MainLayout()
@@ -17,7 +20,19 @@ public partial class MainLayout : Form
 
         _menuForm.MenuItemSelected += OnMenuItemSelected;
 
+        RefreshSidebarShiftInfo();
         OpenRightComponent(new CheckInOutForm());
+    }
+
+    // Hàm làm mới thông tin người trực ca, tên ca đang mở và số lượng chỗ trống trên Sidebar
+    public void RefreshSidebarShiftInfo()
+    {
+        ParkingRepository repository = new ParkingRepository();
+        (long ShiftId, string ShiftName, string AdminName) shiftInfo = repository.GetCurrentOpenShiftInfo();
+        _menuForm.UpdateShiftInfo(shiftInfo.AdminName, shiftInfo.ShiftName);
+
+        (int AvailableSlots, int TotalSlots) summary = repository.GetSlotCapacitySummary();
+        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots);
     }
 
     // Hàm điều hướng mở Form chức năng tương ứng khi người dùng chọn mục trên Menu
@@ -50,6 +65,10 @@ public partial class MainLayout : Form
             {
                 AppService.Map.MapChanged -= OnParkingMapChanged;
             }
+            else if (_currentRightForm is SearchReportForm oldSearchReportForm)
+            {
+                oldSearchReportForm.LogoutRequested -= OnLogoutRequested;
+            }
 
             _currentRightForm.Close();
             _currentRightForm.Dispose();
@@ -64,9 +83,21 @@ public partial class MainLayout : Form
         {
             AppService.Map.MapChanged += OnParkingMapChanged;
         }
+        else if (childForm is SearchReportForm newSearchReportForm)
+        {
+            newSearchReportForm.LogoutRequested += OnLogoutRequested;
+        }
 
+        RefreshSidebarShiftInfo();
         _currentRightForm = childForm;
         EmbedFormIntoPanel(childForm, pnlRightContent);
+    }
+
+    // Hàm xử lý yêu cầu đăng xuất sau khi người dùng tổng kết ca trực
+    private void OnLogoutRequested()
+    {
+        IsLogoutRequested = true;
+        Close();
     }
 
     // Hàm cập nhật lại số chỗ trống trên Sidebar khi Sơ đồ bãi có thay đổi ô đỗ hoặc bảo trì

@@ -3,10 +3,6 @@ using BAIDOXETHONGMINH.DAL.Database;
 using BAIDOXETHONGMINH.DTO.Entities;
 using BAIDOXETHONGMINH.GUI;
 using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.DAL.Repositories;
 
@@ -38,8 +34,8 @@ public class ParkingRepository
             ExecuteNonQuery(
                 connection,
                 transaction,
-                @"INSERT OR IGNORE INTO Users (Username, PasswordHash, FullName, Phone, IsActive)
-                  VALUES ('admin', '123456', 'Admin Tính', '0901234567', 1);"
+                @"INSERT OR IGNORE INTO Users (Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive)
+                  VALUES ('admin', '1', 'Admin Tính', '0901234567', 'admin@gmail.com', '079204009999', 'NV01', 1);"
             );
 
             ExecuteNonQuery(
@@ -1111,273 +1107,272 @@ public class ParkingRepository
         }
     }
   
-  //NV5: tra cứu lịch sử ra vào
-    public List<ParkingSession> getParkingHistory(string keyword,string status , string tuNgay, string denNgay){
-        
-            var list = new List<ParkingSession>();
-            using (var conn = SqliteDbContext.GetConnection())
+    // Hàm tra cứu lịch sử các lượt xe ra vào bãi theo từ khóa, trạng thái và khoảng ngày
+    public List<ParkingSession> getParkingHistory(string keyword, string status, string tuNgay, string denNgay)
+    {
+        List<ParkingSession> list = new List<ParkingSession>();
+        string trimmedKeyword = string.IsNullOrWhiteSpace(keyword) ? string.Empty : keyword.Trim();
+        string normalizedKeyword = NormalizePlate(trimmedKeyword);
+
+        using (SqliteConnection conn = SqliteDbContext.GetConnection())
+        {
+            string query = @"
+                SELECT
+                    SessionId,
+                    CardCode,
+                    LicensePlate,
+                    VehicleTypeId,
+                    SlotCode,
+                    CheckInTime,
+                    CheckOutTime,
+                    CheckInImagePath,
+                    CheckOutImagePath,
+                    CheckInUserId,
+                    CheckOutUserId,
+                    IsMonthlyPass,
+                    ParkingFee,
+                    PenaltyFee,
+                    TotalAmount,
+                    Status
+                FROM ParkingSessions
+                WHERE
+                    (@Keyword IS NULL
+                        OR LicensePlate LIKE '%' || @Keyword || '%'
+                        OR UPPER(REPLACE(REPLACE(REPLACE(LicensePlate, ' ', ''), '-', ''), '.', '')) LIKE '%' || @NormalizedKeyword || '%'
+                        OR CardCode LIKE '%' || @Keyword || '%')
+                    AND (@Status IS NULL OR Status = @Status)
+                    AND (@TuNgay IS NULL OR date(CheckInTime) >= date(@TuNgay))
+                    AND (@DenNgay IS NULL OR date(CheckInTime) <= date(@DenNgay))
+                ORDER BY CheckInTime DESC, SessionId DESC;";
+
+            using (SqliteCommand cmd = conn.CreateCommand())
             {
-               string query = @"
-    SELECT
-        SessionId,
-        CardCode,
-        LicensePlate,
-        VehicleTypeId,
-        SlotCode,
-        CheckInTime,
-        CheckOutTime,
-        CheckInImagePath,
-        CheckOutImagePath,
-        CheckInUserId,
-        CheckOutUserId,
-        IsMonthlyPass,
-        ParkingFee,
-        PenaltyFee,
-        TotalAmount,
-        Status
-    FROM ParkingSessions
-    WHERE
-        (@Keyword IS NULL
-            OR LicensePlate LIKE '%' || @Keyword || '%'
-            OR CardCode LIKE '%' || @Keyword || '%')
-        AND (@Status IS NULL OR Status = @Status)
-        AND (@TuNgay IS NULL OR date(CheckInTime) >= date(@TuNgay))
-        AND (@DenNgay IS NULL OR date(CheckInTime) <= date(@DenNgay))
-    ORDER BY CheckInTime DESC;";
-                    using (var cmd = conn.CreateCommand())
+                cmd.CommandText = query;
+                cmd.Parameters.AddWithValue("@Keyword", string.IsNullOrEmpty(trimmedKeyword) ? (object)DBNull.Value : trimmedKeyword);
+                cmd.Parameters.AddWithValue("@NormalizedKeyword", string.IsNullOrEmpty(normalizedKeyword) ? (object)DBNull.Value : normalizedKeyword);
+                cmd.Parameters.AddWithValue("@Status", string.IsNullOrEmpty(status) ? (object)DBNull.Value : status);
+                cmd.Parameters.AddWithValue("@TuNgay", string.IsNullOrEmpty(tuNgay) ? (object)DBNull.Value : tuNgay);
+                cmd.Parameters.AddWithValue("@DenNgay", string.IsNullOrEmpty(denNgay) ? (object)DBNull.Value : denNgay);
+
+                using (SqliteDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
                     {
-                        cmd.CommandText = query;
-                        cmd.Parameters.AddWithValue("@Keyword", string.IsNullOrEmpty(keyword) ? (object)DBNull.Value : keyword);
-                        cmd.Parameters.AddWithValue("@Status", string.IsNullOrEmpty(status) ? (object)DBNull.Value : status);
-                        cmd.Parameters.AddWithValue("@TuNgay", string.IsNullOrEmpty(tuNgay) ? (object)DBNull.Value : tuNgay);
-                        cmd.Parameters.AddWithValue("@DenNgay", string.IsNullOrEmpty(denNgay) ? (object)DBNull.Value : denNgay);
-
-                        using (var reader = cmd.ExecuteReader())
+                        list.Add(new ParkingSession
                         {
-                            while (reader.Read())
-                            {
-                                
-                                   list.Add(new ParkingSession
-{
-                                    SessionId = reader.GetInt32(0),
-                                    CardCode = reader.GetString(1),
-                                    LicensePlate = reader.GetString(2),
-                                    VehicleTypeId = Convert.ToString(reader.GetValue(3)) ?? String.Empty,
-                                    SlotCode = reader.GetString(4),
-                                    CheckInTime = DateTime.Parse(reader.GetString(5)),
-                                    CheckOutTime = reader.IsDBNull(6) ? null : DateTime.Parse(reader.GetString(6)),
-                                    CheckInImagePath = reader.IsDBNull(7) ? null : reader.GetString(7),
-                                    CheckOutImagePath = reader.IsDBNull(8) ? null : reader.GetString(8),
-                                    CheckInUserId = reader.GetInt32(9),
-                                    CheckOutUserId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
-                                    IsMonthlyPass = reader.GetInt32(11) == 1,
-                                    ParkingFee = reader.GetDecimal(12),
-                                    PenaltyFee = reader.GetDecimal(13),
-                                    TotalAmount = reader.GetDecimal(14),
-                                    Status = reader.GetString(15)
-                                    });
-                            }
-                        }
-                    }   
+                            SessionId = reader.GetInt32(0),
+                            CardCode = reader.GetString(1),
+                            LicensePlate = reader.GetString(2),
+                            VehicleTypeId = Convert.ToString(reader.GetValue(3)) ?? string.Empty,
+                            SlotCode = reader.GetString(4),
+                            CheckInTime = ParseSqliteDateTime(reader.GetString(5)),
+                            CheckOutTime = reader.IsDBNull(6) ? null : ParseSqliteDateTime(reader.GetString(6)),
+                            CheckInImagePath = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            CheckOutImagePath = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            CheckInUserId = reader.GetInt32(9),
+                            CheckOutUserId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
+                            IsMonthlyPass = reader.GetInt32(11) == 1,
+                            ParkingFee = reader.GetDecimal(12),
+                            PenaltyFee = reader.GetDecimal(13),
+                            TotalAmount = reader.GetDecimal(14),
+                            Status = reader.GetString(15)
+                        });
+                    }
+                }
             }
-            return list;         
-    }
-    //NV5: tra cứu biên bản sự cố / mất thẻ
+        }
 
-    //user = 
+        return list;
+    }
+
+    // Hàm lập biên bản xử lý sự cố mất thẻ và ghi nhận giao dịch bồi thường trong một Transaction
     public bool HandleLostCardReport(long sessionId, string cardCode, string licensePlate, string customerName, string phoneNumber, string customerIdCode, decimal parkingFee, decimal penaltyFee, int userId, long shiftId, string note)
     {
-        using (var conn = SqliteDbContext.GetConnection()) 
-            using (var trans = conn.BeginTransaction())
+        using (SqliteConnection conn = SqliteDbContext.GetConnection())
+        using (SqliteTransaction trans = conn.BeginTransaction())
+        {
+            try
             {
-                try
-                {
-                    decimal totalAmount = parkingFee + penaltyFee;
-                    //1. Cập nhật trạng thái lịch sử ra vào thành "Mất thẻ" (ParkingSessions thành LostCard) - NV5
-                    string updateSession = @" UPDATE ParkingSessions SET CheckOutTime = datetime('now', 'localtime'), ParkingFee = @ParkingFee, PenaltyFee = @PenaltyFee,
-                    TotalAmount = @TotalAmount, Status = 'LostCard', CheckOutUserId = @UserId WHERE SessionId = @SessionId;";
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = trans;
+                decimal totalAmount = parkingFee + penaltyFee;
+                string updateSession = @"
+                    UPDATE ParkingSessions
+                    SET CheckOutTime = datetime('now', 'localtime'),
+                        ParkingFee = @ParkingFee,
+                        PenaltyFee = @PenaltyFee,
+                        TotalAmount = @TotalAmount,
+                        Status = 'LostCard',
+                        CheckOutUserId = @UserId
+                    WHERE SessionId = @SessionId;";
 
-                        cmd.CommandText = updateSession;
-                        cmd.Parameters.AddWithValue("@ParkingFee", parkingFee);
-                        cmd.Parameters.AddWithValue("@PenaltyFee", penaltyFee);
-                        cmd.Parameters.AddWithValue("@TotalAmount", totalAmount);
-                        cmd.Parameters.AddWithValue("@UserId", userId);
-                        cmd.Parameters.AddWithValue("@SessionId", sessionId);
-                        
-                        int rowsAffected = cmd.ExecuteNonQuery();
-                        if (rowsAffected == 0)
+                using (SqliteCommand cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = trans;
+                    cmd.CommandText = updateSession;
+                    cmd.Parameters.AddWithValue("@ParkingFee", parkingFee);
+                    cmd.Parameters.AddWithValue("@PenaltyFee", penaltyFee);
+                    cmd.Parameters.AddWithValue("@TotalAmount", totalAmount);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@SessionId", sessionId);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected == 0)
                     {
                         trans.Rollback();
-                        return false; // Không tìm thấy sessionId
+                        return false;
                     }
-                    } 
-                    //2. Khoá thẻ(ParkingCards) - NV5
-                    string updateCard = "UPDATE ParkingCards SET Status = 'Locked' WHERE CardCode = @CardCode;";
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = trans;
-                        cmd.CommandText = updateCard;
-                        cmd.Parameters.AddWithValue("@CardCode", cardCode);
-                        cmd.ExecuteNonQuery();
-                    }
-                    //3. Thêm/Lưu thông tin sự cố mất thẻ(IncidentReports) - NV5
-                   string insertIncident = @"
-                        INSERT INTO IncidentReports
-                        (
-                            SessionId,
-                            CardCode,
-                            LicensePlate,
-                            CustomerName,
-                            CustomerPhone,
-                            CustomerIdentityCard,
-                            IncidentType,
-                            CompensationFee,
-                            Note,
-                            HandledByUserId,
-                            CreatedAt
-                        )
-                        VALUES
-                        (
-                            @SessionId,
-                            @CardCode,
-                            @LicensePlate,
-                            @CustomerName,
-                            @CustomerPhone,
-                            @CustomerIdentityCard,
-                            'LostCard',
-                            @CompensationFee,
-                            @Note,
-                            @UserId,
-                            datetime('now', 'localtime')
-                        );";
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = trans;
-
-                        cmd.CommandText = insertIncident;
-                        cmd.Parameters.AddWithValue("@SessionId", sessionId);
-                        cmd.Parameters.AddWithValue("@CardCode", cardCode);
-                        cmd.Parameters.AddWithValue("@LicensePlate", licensePlate);
-                        cmd.Parameters.AddWithValue("@CustomerName", customerName);
-                        cmd.Parameters.AddWithValue("@CustomerPhone", phoneNumber);
-                        cmd.Parameters.AddWithValue("@CustomerIdentityCard", customerIdCode);
-                        cmd.Parameters.AddWithValue("@CompensationFee", penaltyFee);
-                        cmd.Parameters.AddWithValue("@Note", String.IsNullOrEmpty(note) ? (object)DBNull.Value : note);
-                        cmd.Parameters.AddWithValue("@UserId", userId);
-                        cmd.ExecuteNonQuery();
-                    }
-                    //4. Thêm giao dịch thu tiền (PaymentTransactions) - NV5
-                    string insertPayment = @"
-                        INSERT INTO PaymentTransactions
-                        (
-                            TransactionType,
-                            ReferenceId,
-                            Amount,
-                            PaymentMethod,
-                            CollectedByUserId,
-                            ShiftId,
-                            Note,
-                            CreatedAt
-                        )
-                        VALUES
-                        (
-                            'LostCardPenalty',
-                            @SessionId,
-                            @TotalAmount,
-                            'Cash',
-                            @UserId,
-                            @ShiftId,
-                            @Note,
-                            datetime('now', 'localtime')
-                        );";
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = trans;
-                        cmd.CommandText = insertPayment;
-                        cmd.Parameters.AddWithValue("@SessionId", sessionId);
-                        cmd.Parameters.AddWithValue("@TotalAmount", totalAmount);
-                        cmd.Parameters.AddWithValue("@UserId", userId);
-                        cmd.Parameters.AddWithValue("@ShiftId", shiftId == 0 ? (object)DBNull.Value : shiftId);
-                        cmd.Parameters.AddWithValue("@Note", "Thu phí giữ xe và phạt mất thẻ");
-                        cmd.ExecuteNonQuery();
-
-                    }
-
-                    trans.Commit();
-                    return true;
-                           
                 }
-                catch
+
+                string updateCard = "UPDATE ParkingCards SET Status = 'Locked' WHERE CardCode = @CardCode;";
+                using (SqliteCommand cmd = conn.CreateCommand())
                 {
-                       trans.Rollback();
-                          return false;
+                    cmd.Transaction = trans;
+                    cmd.CommandText = updateCard;
+                    cmd.Parameters.AddWithValue("@CardCode", cardCode);
+                    cmd.ExecuteNonQuery();
                 }
+
+                string insertIncident = @"
+                    INSERT INTO IncidentReports
+                    (
+                        SessionId,
+                        CardCode,
+                        LicensePlate,
+                        CustomerName,
+                        CustomerPhone,
+                        CustomerIdentityCard,
+                        IncidentType,
+                        CompensationFee,
+                        Note,
+                        HandledByUserId,
+                        CreatedAt
+                    )
+                    VALUES
+                    (
+                        @SessionId,
+                        @CardCode,
+                        @LicensePlate,
+                        @CustomerName,
+                        @CustomerPhone,
+                        @CustomerIdentityCard,
+                        'LostCard',
+                        @CompensationFee,
+                        @Note,
+                        @UserId,
+                        datetime('now', 'localtime')
+                    );";
+
+                using (SqliteCommand cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = trans;
+                    cmd.CommandText = insertIncident;
+                    cmd.Parameters.AddWithValue("@SessionId", sessionId);
+                    cmd.Parameters.AddWithValue("@CardCode", cardCode);
+                    cmd.Parameters.AddWithValue("@LicensePlate", licensePlate);
+                    cmd.Parameters.AddWithValue("@CustomerName", customerName);
+                    cmd.Parameters.AddWithValue("@CustomerPhone", phoneNumber);
+                    cmd.Parameters.AddWithValue("@CustomerIdentityCard", customerIdCode);
+                    cmd.Parameters.AddWithValue("@CompensationFee", penaltyFee);
+                    cmd.Parameters.AddWithValue("@Note", string.IsNullOrEmpty(note) ? (object)DBNull.Value : note);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.ExecuteNonQuery();
+                }
+
+                string insertPayment = @"
+                    INSERT INTO PaymentTransactions
+                    (
+                        TransactionType,
+                        ReferenceId,
+                        Amount,
+                        PaymentMethod,
+                        CollectedByUserId,
+                        ShiftId,
+                        Note,
+                        CreatedAt
+                    )
+                    VALUES
+                    (
+                        'LostCardPenalty',
+                        @SessionId,
+                        @TotalAmount,
+                        'Cash',
+                        @UserId,
+                        @ShiftId,
+                        @Note,
+                        datetime('now', 'localtime')
+                    );";
+
+                using (SqliteCommand cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = trans;
+                    cmd.CommandText = insertPayment;
+                    cmd.Parameters.AddWithValue("@SessionId", sessionId);
+                    cmd.Parameters.AddWithValue("@TotalAmount", totalAmount);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@ShiftId", shiftId == 0 ? (object)DBNull.Value : shiftId);
+                    cmd.Parameters.AddWithValue("@Note", "Thu phí giữ xe và phạt mất thẻ");
+                    cmd.ExecuteNonQuery();
+                }
+
+                trans.Commit();
+                return true;
             }
-                     
-    }   
-            
+            catch
+            {
+                trans.Rollback();
+                return false;
+            }
+        }
+    }
 
-    //NV6: Thống kê doanh thu theo ca làm việc, Quản lý ca trực..
-
-       //1. Thống kê doanh thu theo ca trực..(work Shift) - NV6
+    // Hàm tổng hợp báo cáo doanh thu chi tiết của một ca trực theo mã ca
     public Dictionary<string, object> GetShiftRevenueReport(long shiftId)
     {
-        var result = new Dictionary<string, object>();
-        using (var conn = SqliteDbContext.GetConnection())
+        Dictionary<string, object> result = new Dictionary<string, object>();
+        using (SqliteConnection conn = SqliteDbContext.GetConnection())
         {
-                string query = @"
-                    SELECT
-                        s.ShiftId,
-                        s.ShiftName,
-                        s.StartTime,
-                        s.EndTime,
-                        s.Status,
-                        s.TotalVehiclesOut,
+            string query = @"
+                SELECT
+                    s.ShiftId,
+                    s.ShiftName,
+                    s.StartTime,
+                    s.EndTime,
+                    s.Status,
+                    s.TotalVehiclesOut,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN p.TransactionType = 'ParkingFee'
+                            THEN p.Amount
+                            ELSE 0
+                        END
+                    ), 0) AS RevenueNormal,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN p.TransactionType = 'LostCardPenalty'
+                            THEN p.Amount
+                            ELSE 0
+                        END
+                    ), 0) AS RevenueLostCard,
+                    COALESCE(SUM(p.Amount), 0) AS TotalRevenue
+                FROM WorkShifts s
+                LEFT JOIN PaymentTransactions p
+                    ON s.ShiftId = p.ShiftId
+                WHERE s.ShiftId = @ShiftId
+                GROUP BY
+                    s.ShiftId,
+                    s.ShiftName,
+                    s.StartTime,
+                    s.EndTime,
+                    s.Status,
+                    s.TotalVehiclesOut;";
 
-                        SUM(
-                            CASE
-                                WHEN p.TransactionType = 'ParkingFee'
-                                THEN p.Amount
-                                ELSE 0
-                            END
-                        ) AS RevenueNormal,
-
-                        SUM(
-                            CASE
-                                WHEN p.TransactionType = 'LostCardPenalty'
-                                THEN p.Amount
-                                ELSE 0
-                            END
-                        ) AS RevenueLostCard,
-
-                        SUM(p.Amount) AS TotalRevenue
-
-                    FROM WorkShifts s
-                    LEFT JOIN PaymentTransactions p
-                        ON s.ShiftId = p.ShiftId
-
-                    WHERE s.ShiftId = @ShiftId
-
-                    GROUP BY
-                        s.ShiftId,
-                        s.ShiftName,
-                        s.StartTime,
-                        s.EndTime,
-                        s.Status,
-                        s.TotalVehiclesOut;";
-
-
-            using (var cmd = conn.CreateCommand())
+            using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = query;
                 cmd.Parameters.AddWithValue("@ShiftId", shiftId);
 
-                using (var reader = cmd.ExecuteReader())
+                using (SqliteDataReader reader = cmd.ExecuteReader())
                 {
-                    if (reader.Read())  
+                    if (reader.Read())
                     {
                         result["ShiftId"] = reader.GetInt64(0);
                         result["ShiftName"] = reader.GetString(1);
@@ -1392,28 +1387,293 @@ public class ParkingRepository
                 }
             }
         }
+
         return result;
     }
-    //2. Chốt ca trực (Close Shift) - NV6
+
+    // Hàm chốt và đóng ca trực đang mở kèm lưu tổng doanh thu cuối ca
     public bool CloseShift(long shiftId, decimal finalRevenue)
     {
-        using var conn = SqliteDbContext.GetConnection();
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        string query = @"
+            UPDATE WorkShifts
+            SET EndTime = datetime('now', 'localtime'),
+                TotalRevenue = @FinalRevenue,
+                Status = 'Closed'
+            WHERE ShiftId = @ShiftId
+              AND Status = 'Open';";
+
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = query;
+        cmd.Parameters.AddWithValue("@FinalRevenue", finalRevenue);
+        cmd.Parameters.AddWithValue("@ShiftId", shiftId);
+        int rowsAffected = cmd.ExecuteNonQuery();
+        return rowsAffected > 0;
+    }
+
+    // Hàm xác thực đăng nhập nhân viên theo Email (hoặc Username) và Mật khẩu
+    public User? AuthenticateUserByEmail(string emailOrUsername, string password)
+    {
+        if (string.IsNullOrWhiteSpace(emailOrUsername) || string.IsNullOrEmpty(password))
         {
-            string query = @"
-                    UPDATE WorkShifts
-                    SET EndTime = datetime('now', 'localtime'),
-                        TotalRevenue = @FinalRevenue,
-                        Status = 'Closed'
-                    WHERE ShiftId = @ShiftId
-                      AND Status = 'Open';";
-                using (var cmd = conn.CreateCommand())
+            return null;
+        }
+
+        string cleanedLogin = emailOrUsername.Trim();
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT UserId, Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive
+            FROM Users
+            WHERE IsActive = 1
+              AND (LOWER(TRIM(Email)) = LOWER(@Login) OR LOWER(TRIM(Username)) = LOWER(@Login))
+              AND PasswordHash = @Password
+            LIMIT 1;";
+        cmd.Parameters.AddWithValue("@Login", cleanedLogin);
+        cmd.Parameters.AddWithValue("@Password", password.Trim());
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapUser(reader);
+        }
+
+        return null;
+    }
+
+    // Hàm xác minh thông tin nhân viên qua Số CCCD và Mã nhân viên để cấp lại mật khẩu
+    public User? VerifyUserForPasswordReset(string identityCard, string employeeCode)
+    {
+        if (string.IsNullOrWhiteSpace(identityCard) || string.IsNullOrWhiteSpace(employeeCode))
+        {
+            return null;
+        }
+
+        string cleanedCccd = identityCard.Trim();
+        string cleanedEmpCode = employeeCode.Trim();
+
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT UserId, Username, PasswordHash, FullName, Phone, Email, IdentityCard, EmployeeCode, IsActive
+            FROM Users
+            WHERE IsActive = 1
+              AND TRIM(IdentityCard) = @IdentityCard
+              AND (
+                  UPPER(TRIM(EmployeeCode)) = UPPER(@EmployeeCode)
+                  OR CAST(UserId AS TEXT) = @EmployeeCode
+                  OR UPPER(TRIM(Username)) = UPPER(@EmployeeCode)
+              )
+            LIMIT 1;";
+        cmd.Parameters.AddWithValue("@IdentityCard", cleanedCccd);
+        cmd.Parameters.AddWithValue("@EmployeeCode", cleanedEmpCode);
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            return MapUser(reader);
+        }
+
+        return null;
+    }
+
+    // Hàm cập nhật mật khẩu mới cho nhân viên sau khi xác minh CCCD và Mã nhân viên thành công
+    public bool ResetUserPassword(int userId, string newPassword)
+    {
+        if (userId <= 0 || string.IsNullOrWhiteSpace(newPassword))
+        {
+            return false;
+        }
+
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Users SET PasswordHash = @NewPassword WHERE UserId = @UserId;";
+        cmd.Parameters.AddWithValue("@NewPassword", newPassword.Trim());
+        cmd.Parameters.AddWithValue("@UserId", userId);
+        return cmd.ExecuteNonQuery() > 0;
+    }
+
+    // Hàm ánh xạ một dòng dữ liệu SqliteDataReader sang đối tượng User
+    private static User MapUser(SqliteDataReader reader)
+    {
+        return new User
+        {
+            UserId = reader.GetInt32(0),
+            Username = reader.GetString(1),
+            PasswordHash = reader.GetString(2),
+            FullName = reader.GetString(3),
+            Phone = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+            Email = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+            IdentityCard = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+            EmployeeCode = reader.IsDBNull(7) ? string.Empty : reader.GetString(7),
+            IsActive = reader.GetInt32(8) == 1
+        };
+    }
+
+    // Hàm đảm bảo có một ca trực đang mở cho nhân viên vừa đăng nhập (hoặc tạo mới nếu ca trước đã đóng)
+    public (long ShiftId, string ShiftName) EnsureOpenWorkShift(int userId, string selectedShiftName)
+    {
+        int safeUserId = userId <= 0 ? 1 : userId;
+        string normalizedShiftName = NormalizeShiftShortName(selectedShiftName);
+
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using (SqliteCommand findCmd = conn.CreateCommand())
+        {
+            findCmd.CommandText = @"
+                SELECT ShiftId, ShiftName
+                FROM WorkShifts
+                WHERE Status = 'Open'
+                ORDER BY ShiftId DESC
+                LIMIT 1;";
+            using SqliteDataReader reader = findCmd.ExecuteReader();
+            if (reader.Read())
             {
-             cmd.CommandText = query;
-                cmd.Parameters.AddWithValue("@FinalRevenue", finalRevenue);
-                cmd.Parameters.AddWithValue("@ShiftId", shiftId);
-                int rowsAffected = cmd.ExecuteNonQuery();  
-                return rowsAffected > 0;
-            }  
-        }  
+                long existingShiftId = reader.GetInt64(0);
+                reader.Close();
+
+                using SqliteCommand updateCmd = conn.CreateCommand();
+                updateCmd.CommandText = "UPDATE WorkShifts SET UserId = @UserId, ShiftName = @ShiftName WHERE ShiftId = @ShiftId;";
+                updateCmd.Parameters.AddWithValue("@UserId", safeUserId);
+                updateCmd.Parameters.AddWithValue("@ShiftName", normalizedShiftName);
+                updateCmd.Parameters.AddWithValue("@ShiftId", existingShiftId);
+                updateCmd.ExecuteNonQuery();
+
+                return (existingShiftId, normalizedShiftName);
+            }
+        }
+
+        using SqliteCommand insertCmd = conn.CreateCommand();
+        insertCmd.CommandText = @"
+            INSERT INTO WorkShifts (UserId, ShiftName, StartTime, EndTime, TotalVehiclesIn, TotalVehiclesOut, TotalRevenue, Status)
+            VALUES (@UserId, @ShiftName, datetime('now', 'localtime'), NULL, 0, 0, 0, 'Open');
+            SELECT last_insert_rowid();";
+        insertCmd.Parameters.AddWithValue("@UserId", safeUserId);
+        insertCmd.Parameters.AddWithValue("@ShiftName", normalizedShiftName);
+        object? newIdObj = insertCmd.ExecuteScalar();
+        long newShiftId = newIdObj != null && newIdObj != DBNull.Value ? Convert.ToInt64(newIdObj) : 1L;
+        return (newShiftId, normalizedShiftName);
+    }
+
+    // Hàm lấy thông tin ca trực đang mở kèm họ tên nhân viên trực để hiển thị lên Sidebar
+    public (long ShiftId, string ShiftName, string AdminName) GetCurrentOpenShiftInfo()
+    {
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT s.ShiftId, s.ShiftName, COALESCE(u.FullName, 'Admin Tính')
+            FROM WorkShifts s
+            LEFT JOIN Users u ON u.UserId = s.UserId
+            WHERE s.Status = 'Open'
+            ORDER BY s.ShiftId DESC
+            LIMIT 1;";
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            return (reader.GetInt64(0), reader.GetString(1), reader.GetString(2));
+        }
+
+        return (0L, "Chưa mở ca", "Admin Tính");
+    }
+
+    // Hàm rút gọn tên ca trực chuẩn ("Ca Sáng", "Ca Chiều", "Ca Đêm") từ chuỗi hiển thị trên ComboBox
+    public static string NormalizeShiftShortName(string rawShiftText)
+    {
+        if (string.IsNullOrWhiteSpace(rawShiftText))
+        {
+            return "Ca Sáng";
+        }
+
+        if (rawShiftText.Contains("Ca Chiều", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Ca Chiều";
+        }
+
+        if (rawShiftText.Contains("Ca Đêm", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Ca Đêm";
+        }
+
+        if (rawShiftText.Contains("Ca Sáng", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Ca Sáng";
+        }
+
+        return rawShiftText.Trim();
+    }
+
+    // Hàm thống kê doanh thu đăng ký và gia hạn vé tháng trong ngày hôm nay cho thẻ KPI 3
+    public (decimal TotalRevenue, int NewPassCount, int RenewPassCount) GetTodayMonthlyPassRevenueSummary()
+    {
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT
+                COALESCE(SUM(Amount), 0) AS TotalMonthlyRevenue,
+                COALESCE(SUM(CASE WHEN TransactionType = 'MonthlyPassNew' THEN 1 ELSE 0 END), 0) AS NewCount,
+                COALESCE(SUM(CASE WHEN TransactionType = 'MonthlyPassRenew' THEN 1 ELSE 0 END), 0) AS RenewCount
+            FROM PaymentTransactions
+            WHERE TransactionType IN ('MonthlyPassNew', 'MonthlyPassRenew')
+              AND date(CreatedAt) = date('now', 'localtime');";
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            decimal total = reader.IsDBNull(0) ? 0m : reader.GetDecimal(0);
+            int newCount = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+            int renewCount = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+            return (total, newCount, renewCount);
+        }
+
+        return (0m, 0, 0);
+    }
+
+    // Hàm thống kê số biên bản sự cố mất thẻ và tổng tiền phạt mất thẻ trong ngày hôm nay cho thẻ KPI 4
+    public (int IncidentCount, decimal TotalCompensation) GetTodayLostCardIncidentSummary()
+    {
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT
+                COUNT(*) AS TotalIncidents,
+                COALESCE(SUM(CompensationFee), 0) AS TotalPenalty
+            FROM IncidentReports
+            WHERE IncidentType = 'LostCard'
+              AND date(CreatedAt) = date('now', 'localtime');";
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            int count = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+            decimal penalty = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+            return (count, penalty);
+        }
+
+        return (0, 0m);
+    }
+
+    // Hàm lấy danh sách ghi chú biên bản mất thẻ theo mã lượt gửi để hiển thị trên bảng lịch sử
+    public Dictionary<int, string> GetLostCardNotesBySessionId()
+    {
+        Dictionary<int, string> notes = new Dictionary<int, string>();
+        using SqliteConnection conn = SqliteDbContext.GetConnection();
+        using SqliteCommand cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT SessionId, CustomerIdentityCard
+            FROM IncidentReports
+            WHERE SessionId IS NOT NULL
+              AND IncidentType = 'LostCard';";
+
+        using SqliteDataReader reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            int sessionId = reader.GetInt32(0);
+            string cccd = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+            notes[sessionId] = string.IsNullOrWhiteSpace(cccd)
+                ? "Mất thẻ"
+                : $"Mất thẻ (CCCD: {cccd})";
+        }
+
+        return notes;
     }
 }

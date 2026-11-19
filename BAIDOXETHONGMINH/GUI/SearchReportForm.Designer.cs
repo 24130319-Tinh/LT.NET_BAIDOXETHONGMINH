@@ -24,15 +24,14 @@ partial class SearchReportForm
     private Button btnSearch = null!;
     private Button btnExportCsv = null!;
 
-
-    //NV6: Thêm button "Đóng ca trực" và panel chứa các hành động liên quan đến ca trực
-    private Button btnCloseShift = null!;
     private Panel pnlShiftActions = null!;
+    private Label lblShiftBanner = null!;
+    private Button btnCloseShift = null!;
 
-    //
     private Panel pnlGridCard = null!;
     private DataGridView dgvHistory = null!;
 
+    // Hàm giải phóng tài nguyên giao diện khi đóng SearchReportForm
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -42,6 +41,7 @@ partial class SearchReportForm
         base.Dispose(disposing);
     }
 
+    // Hàm khởi tạo toàn bộ bố cục điều khiển cho màn hình Tra cứu lịch sử và Báo cáo doanh thu
     private void InitializeComponent()
     {
         pnlHeader = new Panel();
@@ -56,9 +56,10 @@ partial class SearchReportForm
         pnlShiftComboBox = new Panel();
         cboShiftFilter = new ComboBox();
         btnSearch = new Button();
-        btnExportCsv = new Button();    
-        btnCloseShift = new Button();
+        btnExportCsv = new Button();
         pnlShiftActions = new Panel();
+        lblShiftBanner = new Label();
+        btnCloseShift = new Button();
 
         pnlGridCard = new Panel();
         dgvHistory = new DataGridView();
@@ -77,7 +78,7 @@ partial class SearchReportForm
         lblTitle.Location = new Point(16, 10);
         lblTitle.AutoSize = true;
 
-        lblSubtitle.Text = "Thành viên 3 • Tổng hợp số liệu xe trong bãi, tra cứu mất thẻ theo biển số & kết xuất doanh thu";
+        lblSubtitle.Text = "Theo dõi số lượng xe trong bãi, tra cứu lịch sử ra vào, biên bản mất thẻ và tổng kết doanh thu ca trực";
         lblSubtitle.Font = new Font("Segoe UI", 9F);
         lblSubtitle.ForeColor = Color.FromArgb(100, 116, 139);
         lblSubtitle.Location = new Point(16, 36);
@@ -89,27 +90,28 @@ partial class SearchReportForm
         tlpMain.Size = new Size(1020, 652);
         tlpMain.Dock = DockStyle.Fill;
         tlpMain.ColumnCount = 1;
-        tlpMain.RowCount = 3;
+        tlpMain.RowCount = 4;
         tlpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 118F));
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 88F));
+        tlpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
         tlpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        //Thêm hàng mới cho nút "Đóng ca trực" Row4
-        tlpMain.RowCount = 4;
-        tlpMain.RowStyles.Insert(2, new RowStyle(SizeType.Absolute, 54F));
         tlpMain.Padding = new Padding(10, 4, 10, 12);
         tlpMain.BackColor = Color.FromArgb(248, 250, 252);
 
         tlpKpiRow.Dock = DockStyle.Fill;
         tlpKpiRow.ColumnCount = 4;
         tlpKpiRow.RowCount = 1;
-        for (int i = 0; i < 4; i++) tlpKpiRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+        for (int i = 0; i < 4; i++)
+        {
+            tlpKpiRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+        }
         tlpKpiRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        pnlKpi1 = CreateKpiCard("Xe đang gửi trong bãi", "7 / 20 xe", "4 Xe máy • 3 Ô tô", Color.FromArgb(37, 99, 235));
-        pnlKpi2 = CreateKpiCard("Doanh thu Vé lượt (Ca Sáng)", "685.000 đ", "42 lượt xe ra", Color.FromArgb(5, 150, 105));
-        pnlKpi3 = CreateKpiCard("Doanh thu Vé tháng hôm nay", "2.550.000 đ", "Đăng ký & Gia hạn", Color.FromArgb(15, 23, 42));
-        pnlKpi4 = CreateKpiCard("Sự cố mất thẻ hôm nay", "1 biên bản", "Thu phạt: 50.000 đ", Color.FromArgb(225, 29, 72));
+        pnlKpi1 = CreateKpiCard("Xe đang gửi trong bãi", "0 / 96 xe", "0 Xe máy • 0 Ô tô", Color.FromArgb(37, 99, 235));
+        pnlKpi2 = CreateKpiCard("Doanh thu Vé lượt (Ca Sáng)", "0 đ", "0 lượt xe ra", Color.FromArgb(5, 150, 105));
+        pnlKpi3 = CreateKpiCard("Doanh thu Vé tháng hôm nay", "0 đ", "0 đăng ký • 0 gia hạn", Color.FromArgb(15, 23, 42));
+        pnlKpi4 = CreateKpiCard("Sự cố mất thẻ hôm nay", "0 biên bản", "Thu phạt: 0 đ", Color.FromArgb(225, 29, 72));
 
         tlpKpiRow.Controls.Add(pnlKpi1, 0, 0);
         tlpKpiRow.Controls.Add(pnlKpi2, 1, 0);
@@ -121,7 +123,7 @@ partial class SearchReportForm
         pnlFilterCard.BackColor = Color.White;
         pnlFilterCard.Margin = new Padding(6);
 
-        var lblFind = new Label
+        Label lblFind = new Label
         {
             Text = "Tìm theo Biển số xe / Mã thẻ",
             Font = new Font("Segoe UI", 8.5F),
@@ -140,9 +142,10 @@ partial class SearchReportForm
         txtSearchPlate.BorderStyle = BorderStyle.None;
         txtSearchPlate.Font = new Font("Segoe UI", 9.5F);
         txtSearchPlate.PlaceholderText = "Nhập biển số xe cần đối chiếu (VD: 59X3, 51G...)";
+        txtSearchPlate.KeyDown += TxtSearchPlate_KeyDown;
         pnlSearchInputBox.Controls.Add(txtSearchPlate);
 
-        var lblShift = new Label
+        Label lblShift = new Label
         {
             Text = "Ca trực",
             Font = new Font("Segoe UI", 8.5F),
@@ -170,6 +173,7 @@ partial class SearchReportForm
             "Ca Đêm (22:00 - 06:00)"
         });
         cboShiftFilter.SelectedIndex = 0;
+        cboShiftFilter.SelectedIndexChanged += CboShiftFilter_SelectedIndexChanged;
         pnlShiftComboBox.Controls.Add(cboShiftFilter);
 
         btnSearch.Text = "Tìm kiếm";
@@ -202,34 +206,32 @@ partial class SearchReportForm
         pnlFilterCard.Controls.Add(btnSearch);
         pnlFilterCard.Controls.Add(btnExportCsv);
 
-
-
-        // NV6: Giao diện nút Kết thúc ca
         pnlShiftActions.Dock = DockStyle.Fill;
         pnlShiftActions.BackColor = Color.White;
         pnlShiftActions.Margin = new Padding(6);
-        pnlShiftActions.Padding = new Padding(12, 6, 12, 6);
+        pnlShiftActions.Padding = new Padding(16, 6, 16, 6);
+
+        lblShiftBanner.Text = "Ca trực hiện tại: Đang tải thông tin ca...";
+        lblShiftBanner.Font = new Font("Segoe UI", 9.25F, FontStyle.Bold);
+        lblShiftBanner.ForeColor = Color.FromArgb(30, 64, 175);
+        lblShiftBanner.Dock = DockStyle.Fill;
+        lblShiftBanner.TextAlign = ContentAlignment.MiddleLeft;
 
         btnCloseShift.Name = "btnCloseShift";
         btnCloseShift.Text = "Kết thúc ca";
         btnCloseShift.Size = new Size(150, 34);
         btnCloseShift.Dock = DockStyle.Right;
-
         btnCloseShift.FlatStyle = FlatStyle.Flat;
         btnCloseShift.FlatAppearance.BorderSize = 0;
         btnCloseShift.BackColor = Color.FromArgb(220, 38, 38);
         btnCloseShift.ForeColor = Color.White;
         btnCloseShift.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         btnCloseShift.Cursor = Cursors.Hand;
-
-        // Gắn sự kiện khi nhấn nút
         btnCloseShift.Click += BtnCloseShift_Click;
 
-        // Đưa nút vào panel
+        pnlShiftActions.Controls.Add(lblShiftBanner);
         pnlShiftActions.Controls.Add(btnCloseShift);
-        
 
-        // Row 3: History Grid Card
         pnlGridCard.Dock = DockStyle.Fill;
         pnlGridCard.BackColor = Color.White;
         pnlGridCard.Margin = new Padding(6);
@@ -241,10 +243,9 @@ partial class SearchReportForm
 
         tlpMain.Controls.Add(tlpKpiRow, 0, 0);
         tlpMain.Controls.Add(pnlFilterCard, 0, 1);
-
         tlpMain.Controls.Add(pnlShiftActions, 0, 2);
-
         tlpMain.Controls.Add(pnlGridCard, 0, 3);
+
         AutoScaleMode = AutoScaleMode.Font;
         FormBorderStyle = FormBorderStyle.None;
         Controls.Add(tlpMain);
@@ -253,16 +254,17 @@ partial class SearchReportForm
         ResumeLayout(false);
     }
 
+    // Hàm tạo một thẻ chỉ số thống kê KPI gồm tiêu đề, giá trị lớn và dòng mô tả phụ
     private static Panel CreateKpiCard(string caption, string bigValue, string subText, Color valueColor)
     {
-        var p = new Panel
+        Panel p = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = Color.White,
             Margin = new Padding(6),
             Padding = new Padding(14, 10, 14, 10)
         };
-        var l1 = new Label
+        Label l1 = new Label
         {
             Text = caption,
             Font = new Font("Segoe UI", 8.8F),
@@ -270,7 +272,7 @@ partial class SearchReportForm
             Location = new Point(14, 10),
             AutoSize = true
         };
-        var l2 = new Label
+        Label l2 = new Label
         {
             Text = bigValue,
             Font = new Font("Segoe UI", 14F, FontStyle.Bold),
@@ -278,7 +280,7 @@ partial class SearchReportForm
             Location = new Point(14, 34),
             AutoSize = true
         };
-        var l3 = new Label
+        Label l3 = new Label
         {
             Text = subText,
             Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),

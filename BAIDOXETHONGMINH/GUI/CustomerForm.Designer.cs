@@ -72,13 +72,13 @@ partial class CustomerForm
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
-        lblTitle.Text = "QUẢN LÝ HỒ SƠ KHÁCH HÀNG (Customer)";
+        lblTitle.Text = "QUẢN LÝ HỒ SƠ KHÁCH HÀNG";
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);
         lblTitle.AutoSize = true;
 
-        lblSubtitle.Text = "Thành viên 2 • Quản lý thông tin chủ phương tiện đăng ký vé tháng và tra cứu CCCD";
+        lblSubtitle.Text = "Tra cứu và quản lý thông tin khách hàng đăng ký dịch vụ tại bãi xe";
         lblSubtitle.Font = new Font("Segoe UI", 9F);
         lblSubtitle.ForeColor = Color.FromArgb(100, 116, 139);
         lblSubtitle.Location = new Point(16, 36);

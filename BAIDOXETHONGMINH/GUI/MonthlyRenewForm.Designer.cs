@@ -90,13 +90,13 @@ partial class MonthlyRenewForm
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
-        lblTitle.Text = "3.2 GIA HẠN & CẬP NHẬT VÉ THÁNG";
+        lblTitle.Text = "GIA HẠN & CẬP NHẬT VÉ THÁNG";
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);
         lblTitle.AutoSize = true;
 
-        lblSubtitle.Text = "Thành viên 2 • Chọn 1 vé tháng trong bảng bên trái để Gia hạn thêm tháng, Cập nhật thông tin hoặc Hủy vé";
+        lblSubtitle.Text = "Chọn vé tháng trong danh sách bên trái để gia hạn thời gian sử dụng, cập nhật thông tin hoặc hủy vé";
         lblSubtitle.Font = new Font("Segoe UI", 9F);
         lblSubtitle.ForeColor = Color.FromArgb(100, 116, 139);
         lblSubtitle.Location = new Point(16, 36);

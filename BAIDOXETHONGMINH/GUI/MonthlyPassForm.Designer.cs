@@ -90,13 +90,13 @@ partial class MonthlyPassForm
         pnlHeader.Dock = DockStyle.Top;
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
-        lblTitle.Text = "3.1 ĐĂNG KÝ VÉ THÁNG MỚI (CHỈ DÀNH CHO TẠO MỚI)";
+        lblTitle.Text = "ĐĂNG KÝ VÉ THÁNG MỚI";
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);
         lblTitle.AutoSize = true;
 
-        lblSubtitle.Text = "Thành viên 2 • Tạo mới hồ sơ khách hàng & cấp vé tháng theo biển số xe";
+        lblSubtitle.Text = "Đăng ký hồ sơ khách hàng và cấp vé tháng mới theo biển số phương tiện";
         lblSubtitle.Font = new Font("Segoe UI", 9F);
         lblSubtitle.ForeColor = Color.FromArgb(100, 116, 139);
         lblSubtitle.Location = new Point(16, 36);
@@ -217,7 +217,7 @@ partial class MonthlyPassForm
         pnlRightGrid.Margin = new Padding(6);
         pnlRightGrid.Padding = new Padding(16);
 
-        lblGridHeader.Text = "Danh sách Vé tháng hiện có (DataGridView)";
+        lblGridHeader.Text = "Danh sách Vé tháng hiện có";
         lblGridHeader.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
         lblGridHeader.Dock = DockStyle.Top;
         lblGridHeader.Height = 36;

@@ -5,7 +5,7 @@ namespace BAIDOXETHONGMINH;
 
 static class Program
 {
-    // Hàm khởi chạy chính của ứng dụng, khởi tạo CSDL, phiên người dùng mặc định và mở màn hình MainLayout
+    // Hàm khởi chạy chính của ứng dụng, khởi tạo CSDL và điều phối vòng lặp Đăng nhập -> MainLayout -> Đăng xuất
     [STAThread]
     static void Main()
     {
@@ -28,7 +28,23 @@ static class Program
         try
         {
             AppService.InitializeAsync().GetAwaiter().GetResult();
-            Application.Run(new MainLayout());
+
+            while (true)
+            {
+                using Form1 loginForm = new Form1();
+                DialogResult loginResult = loginForm.ShowDialog();
+                if (loginResult != DialogResult.OK)
+                {
+                    break;
+                }
+
+                using MainLayout mainLayout = new MainLayout();
+                Application.Run(mainLayout);
+                if (!mainLayout.IsLogoutRequested)
+                {
+                    break;
+                }
+            }
         }
         catch (Exception ex)
         {
