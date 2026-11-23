@@ -91,6 +91,7 @@ partial class MonthlyRenewForm
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
         lblTitle.Text = "GIA HẠN & CẬP NHẬT VÉ THÁNG";
+        lblTitle.UseMnemonic = false;
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);
@@ -122,6 +123,7 @@ partial class MonthlyRenewForm
         pnlLeftTable.Padding = new Padding(16);
 
         lblTableTitle.Text = "Bảng tra cứu & chọn Vé tháng cần cập nhật";
+        lblTableTitle.UseMnemonic = false;
         lblTableTitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
         lblTableTitle.Location = new Point(16, 14);
         lblTableTitle.AutoSize = true;
@@ -206,6 +208,7 @@ partial class MonthlyRenewForm
         pnlRenewCard.Controls.Add(pnlRenewSummary);
 
         btnConfirmRenew.Text = "Xác Nhận Gia Hạn & Thu Phí";
+        btnConfirmRenew.UseMnemonic = false;
         btnConfirmRenew.Location = new Point(18, 282);
         btnConfirmRenew.Size = new Size(374, 42);
         btnConfirmRenew.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -297,9 +300,10 @@ partial class MonthlyRenewForm
 
     private static void AddInfoLine(Control parent, string labelText, out Label valLbl, string defaultVal, int y)
     {
-        var l = new Label
+        Label l = new Label
         {
             Text = labelText,
+            UseMnemonic = false,
             Font = new Font("Segoe UI", 8.8F),
             ForeColor = Color.FromArgb(100, 116, 139),
             Location = new Point(14, y),

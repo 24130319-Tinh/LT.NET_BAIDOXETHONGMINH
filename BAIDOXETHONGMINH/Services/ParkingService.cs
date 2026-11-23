@@ -59,8 +59,8 @@ public class ParkingService
         return _parkingRepository.GetAvailableSlotsByVehicleType(vehicleTypeId.Trim());
     }
 
-    // Hàm lấy số lượng ô đỗ còn trống trên tổng số ô đỗ của bãi
-    public (int AvailableSlots, int TotalSlots) GetSlotCapacitySummary()
+    // Hàm lấy số lượng ô đỗ còn trống, tổng số ô và số ô đang bảo trì của bãi
+    public (int AvailableSlots, int TotalSlots, int MaintenanceSlots) GetSlotCapacitySummary()
     {
         return _parkingRepository.GetSlotCapacitySummary();
     }

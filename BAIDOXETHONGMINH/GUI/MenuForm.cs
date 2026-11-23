@@ -70,10 +70,17 @@ public partial class MenuForm : Form
         MenuItemSelected?.Invoke(menuKey);
     }
 
-    // Hàm cập nhật số lượng chỗ trống hiển thị trên thẻ Ca làm việc ở Sidebar
-    public void UpdateSlotCapacity(int availableSlots, int totalSlots)
+    // Hàm cập nhật số lượng chỗ trống và số ô đang bảo trì hiển thị trên thẻ Ca làm việc ở Sidebar
+    public void UpdateSlotCapacity(int availableSlots, int totalSlots, int maintenanceSlots = 0)
     {
-        lblShiftSlots.Text = $"Chỗ trống: {availableSlots} / {totalSlots} ô";
+        if (maintenanceSlots > 0)
+        {
+            lblShiftSlots.Text = $"Trống: {availableSlots}/{totalSlots} ({maintenanceSlots} bảo trì)";
+        }
+        else
+        {
+            lblShiftSlots.Text = $"Chỗ trống: {availableSlots} / {totalSlots} ô";
+        }
     }
 
     // Hàm cập nhật tên người quản lý và tên ca trực đang mở lên thẻ thông tin ở Sidebar

@@ -195,15 +195,16 @@ public class ParkingRepository
         return availableSlots;
     }
 
-    // Hàm đếm số lượng ô đỗ còn trống trên tổng số ô đỗ của toàn bãi xe
-    public (int AvailableSlots, int TotalSlots) GetSlotCapacitySummary()
+    // Hàm đếm số lượng ô đỗ còn trống, tổng số ô đỗ và số ô đang bảo trì của toàn bãi xe
+    public (int AvailableSlots, int TotalSlots, int MaintenanceSlots) GetSlotCapacitySummary()
     {
         using SqliteConnection connection = SqliteDbContext.GetConnection();
         using SqliteCommand cmd = connection.CreateCommand();
         cmd.CommandText = @"
             SELECT
                 SUM(CASE WHEN Status = 'Available' THEN 1 ELSE 0 END) AS AvailableCount,
-                COUNT(*) AS TotalCount
+                COUNT(*) AS TotalCount,
+                SUM(CASE WHEN Status = 'Maintenance' THEN 1 ELSE 0 END) AS MaintenanceCount
             FROM ParkingSlots;";
 
         using SqliteDataReader reader = cmd.ExecuteReader();
@@ -211,10 +212,11 @@ public class ParkingRepository
         {
             int availableCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
             int totalCount = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
-            return (availableCount, totalCount);
+            int maintenanceCount = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+            return (availableCount, totalCount, maintenanceCount);
         }
 
-        return (0, 0);
+        return (0, 0, 0);
     }
 
     // Hàm kiểm tra biển số xe hiện có đang gửi trong bãi chưa lấy ra hay không

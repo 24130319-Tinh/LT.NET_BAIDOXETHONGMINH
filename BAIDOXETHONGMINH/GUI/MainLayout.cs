@@ -31,8 +31,8 @@ public partial class MainLayout : Form
         (long ShiftId, string ShiftName, string AdminName) shiftInfo = repository.GetCurrentOpenShiftInfo();
         _menuForm.UpdateShiftInfo(shiftInfo.AdminName, shiftInfo.ShiftName);
 
-        (int AvailableSlots, int TotalSlots) summary = repository.GetSlotCapacitySummary();
-        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots);
+        (int AvailableSlots, int TotalSlots, int MaintenanceSlots) summary = repository.GetSlotCapacitySummary();
+        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots, summary.MaintenanceSlots);
     }
 
     // Hàm điều hướng mở Form chức năng tương ứng khi người dùng chọn mục trên Menu
@@ -114,14 +114,14 @@ public partial class MainLayout : Form
             return;
         }
 
-        (int AvailableSlots, int TotalSlots) summary = new ParkingService().GetSlotCapacitySummary();
-        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots);
+        (int AvailableSlots, int TotalSlots, int MaintenanceSlots) summary = new ParkingService().GetSlotCapacitySummary();
+        _menuForm.UpdateSlotCapacity(summary.AvailableSlots, summary.TotalSlots, summary.MaintenanceSlots);
     }
 
     // Hàm nhận sự kiện thay đổi số chỗ trống từ CheckInOutForm và cập nhật lên Sidebar
-    private void OnSlotCapacityChanged(int availableSlots, int totalSlots)
+    private void OnSlotCapacityChanged(int availableSlots, int totalSlots, int maintenanceSlots)
     {
-        _menuForm.UpdateSlotCapacity(availableSlots, totalSlots);
+        _menuForm.UpdateSlotCapacity(availableSlots, totalSlots, maintenanceSlots);
     }
 
     // Hàm nhúng một Form con vào bên trong một Panel chứa

@@ -75,6 +75,7 @@ partial class MenuForm
         lblAppName.AutoSize = true;
 
         lblAppSub.Text = "Hệ thống Quản lý & Trực ca";
+        lblAppSub.UseMnemonic = false;
         lblAppSub.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular);
         lblAppSub.ForeColor = Color.FromArgb(148, 163, 184);
         lblAppSub.Location = new Point(6, 36);
@@ -144,14 +145,14 @@ partial class MenuForm
         lblShiftTime.Location = new Point(10, 52);
         lblShiftTime.AutoSize = true;
 
-        lblShiftSlots.Text = "Chỗ trống: 13 / 20 ô";
-        lblShiftSlots.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+        lblShiftSlots.Text = "Chỗ trống: 96 / 96 ô";
+        lblShiftSlots.Font = new Font("Segoe UI", 8.2F, FontStyle.Regular);
         lblShiftSlots.ForeColor = Color.FromArgb(203, 213, 225);
         lblShiftSlots.Location = new Point(10, 72);
         lblShiftSlots.AutoSize = true;
 
-        picAvatar.Size = new Size(56, 56);
-        picAvatar.Location = new Point(168, 22);
+        picAvatar.Size = new Size(54, 54);
+        picAvatar.Location = new Point(172, 22);
         picAvatar.SizeMode = PictureBoxSizeMode.Zoom;
         picAvatar.Paint += PicAvatar_Paint;
 
@@ -173,6 +174,7 @@ partial class MenuForm
     private static void ConfigureMenuButton(Button btn, string text, bool isSubItem)
     {
         btn.Text = text;
+        btn.UseMnemonic = false;
         btn.Width = 232;
         btn.Height = isSubItem ? 38 : 42;
         btn.FlatStyle = FlatStyle.Flat;

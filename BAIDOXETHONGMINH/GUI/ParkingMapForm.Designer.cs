@@ -79,6 +79,7 @@ partial class ParkingMapForm
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
         lblTitle.Text = "SƠ ĐỒ VỊ TRÍ ĐỖ XE & BẢNG GIÁ DỊCH VỤ";
+        lblTitle.UseMnemonic = false;
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);

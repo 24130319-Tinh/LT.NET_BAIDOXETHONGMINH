@@ -13,7 +13,7 @@ public partial class CheckInOutForm : Form
     private bool _isLoadingCheckOutData = false;
     private CheckOutPreviewModel? _currentCheckOutPreview = null;
 
-    public event Action<int, int>? SlotCapacityChanged;
+    public event Action<int, int, int>? SlotCapacityChanged;
 
     [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
     private static extern IntPtr CreateRoundRectRgn(
@@ -86,11 +86,11 @@ public partial class CheckInOutForm : Form
         cboSlotIn.DataSource = availableSlots;
     }
 
-    // Hàm phát sự kiện cập nhật số lượng chỗ trống hiện tại lên thanh Menu trái
+    // Hàm phát sự kiện cập nhật số lượng chỗ trống và ô bảo trì hiện tại lên thanh Menu trái
     private void NotifySlotCapacityChanged()
     {
-        (int AvailableSlots, int TotalSlots) summary = _parkingService.GetSlotCapacitySummary();
-        SlotCapacityChanged?.Invoke(summary.AvailableSlots, summary.TotalSlots);
+        (int AvailableSlots, int TotalSlots, int MaintenanceSlots) summary = _parkingService.GetSlotCapacitySummary();
+        SlotCapacityChanged?.Invoke(summary.AvailableSlots, summary.TotalSlots, summary.MaintenanceSlots);
     }
 
     // Hàm gắn hiệu ứng bo tròn góc cho toàn bộ các khung Panel, ô nhập liệu và nút bấm trên Form

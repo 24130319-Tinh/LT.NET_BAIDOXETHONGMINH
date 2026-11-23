@@ -73,6 +73,7 @@ partial class SearchReportForm
         pnlHeader.BackColor = Color.FromArgb(248, 250, 252);
 
         lblTitle.Text = "TRA CỨU LỊCH SỬ XE RA/VÀO & BÁO CÁO DOANH THU";
+        lblTitle.UseMnemonic = false;
         lblTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
         lblTitle.Location = new Point(16, 10);

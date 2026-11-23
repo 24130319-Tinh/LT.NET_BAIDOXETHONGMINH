@@ -188,12 +188,15 @@ public partial class SearchReportForm : Form
                 long motorbikes = reader.GetInt64(1);
                 long cars = reader.GetInt64(2);
 
-                (int AvailableSlots, int TotalSlots) capacity = _repository.GetSlotCapacitySummary();
+                (int AvailableSlots, int TotalSlots, int MaintenanceSlots) capacity = _repository.GetSlotCapacitySummary();
+                string slotSubText = capacity.MaintenanceSlots > 0
+                    ? $"{motorbikes} Xe máy • {cars} Ô tô • {capacity.MaintenanceSlots} bảo trì"
+                    : $"{motorbikes} Xe máy • {cars} Ô tô";
                 UpdateKpiCard(
                     pnlKpi1,
                     "Xe đang gửi trong bãi",
                     $"{total} / {capacity.TotalSlots} xe",
-                    $"{motorbikes} Xe máy • {cars} Ô tô"
+                    slotSubText
                 );
             }
         }
