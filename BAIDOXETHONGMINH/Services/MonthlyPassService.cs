@@ -3,10 +3,17 @@ using BAIDOXETHONGMINH.Models;
 
 namespace BAIDOXETHONGMINH.GUI;
 
-public class MonthlyPassService(PricingService pricing)
+public class MonthlyPassService
 {
+    private readonly PricingService pricing;
     private readonly MonthlyPassRepository _repo = new();
     private readonly CustomerService _customers = new();
+
+    // Hàm khởi tạo dịch vụ quản lý vé tháng với bộ cấu hình bảng giá
+    public MonthlyPassService(PricingService pricing)
+    {
+        this.pricing = pricing;
+    }
 
     public async Task<List<MonthlyPassView>> GetViewsAsync(string keyword = "", string filter = "ALL")
     {
