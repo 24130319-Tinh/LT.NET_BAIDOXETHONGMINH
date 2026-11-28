@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using BAIDOXETHONGMINH.DAL.Database;
 using BAIDOXETHONGMINH.DAL.Repositories;
 using BAIDOXETHONGMINH.DTO.Entities;
+using BAIDOXETHONGMINH.Services;
 using Microsoft.Data.Sqlite;
 
 namespace BAIDOXETHONGMINH.GUI;
@@ -410,14 +411,14 @@ public partial class SearchReportForm : Form
         RefreshAllStatisticsAndHistory();
     }
 
-    // Hàm xử lý sự kiện khi người dùng nhấn nút Xuất Excel (.csv)
+    // Hàm xử lý sự kiện khi người dùng nhấn nút Xuất Excel (.xlsx)
     private void BtnExportCsv_Click(object? sender, EventArgs e)
     {
-        ExportShiftReportsToCsv();
+        ExportShiftReportsToExcel();
     }
 
-    // Hàm kết xuất báo cáo doanh thu tất cả ca trực ra file CSV chuẩn UTF-8 để mở bằng Excel
-    private bool ExportShiftReportsToCsv()
+    // Hàm kết xuất báo cáo doanh thu các ca trực và lịch sử xe ra vào thành file Excel .xlsx định dạng đẹp
+    private bool ExportShiftReportsToExcel()
     {
         try
         {
@@ -446,41 +447,53 @@ public partial class SearchReportForm : Form
                 return false;
             }
 
-            List<Dictionary<string, object>> reports = shiftIds
-                .Select(id => _repository.GetShiftRevenueReport(id))
-                .Where(r => r.Count > 0)
-                .ToList();
-
-            StringBuilder csv = new StringBuilder();
-            csv.AppendLine(
-                "Ma ca,Ten ca,Bat dau,Ket thuc,Trang thai," +
-                "So xe ra,Doanh thu ve luot,Tien phat mat the,Tong doanh thu"
-            );
-
-            foreach (Dictionary<string, object> r in reports)
+            List<ShiftExcelRow> shiftRows = new List<ShiftExcelRow>();
+            foreach (long id in shiftIds)
             {
-                object[] fields =
+                Dictionary<string, object> r = _repository.GetShiftRevenueReport(id);
+                if (r.Count == 0)
                 {
-                    r["ShiftId"],
-                    r["ShiftName"],
-                    r["StartTime"],
-                    r["EndTime"],
-                    r["Status"],
-                    r["TotalVehiclesOut"],
-                    r["RevenueNormal"],
-                    r["RevenueLostCard"],
-                    r["TotalRevenue"]
-                };
+                    continue;
+                }
 
-                csv.AppendLine(string.Join(",", fields.Select(EscapeCsvField)));
+                string rawStatus = Convert.ToString(r["Status"]) ?? string.Empty;
+                bool isOpen = string.Equals(rawStatus, "Open", StringComparison.OrdinalIgnoreCase);
+                string statusText = isOpen ? "Đang mở" : "Đã đóng";
+
+                string rawStart = Convert.ToString(r["StartTime"]) ?? string.Empty;
+                string rawEnd = Convert.ToString(r["EndTime"]) ?? string.Empty;
+                string staffName = r.ContainsKey("StaffName")
+                    ? (Convert.ToString(r["StaffName"]) ?? "Admin Tính")
+                    : "Admin Tính";
+                decimal revMonthly = r.ContainsKey("RevenueMonthly")
+                    ? Convert.ToDecimal(r["RevenueMonthly"])
+                    : 0m;
+
+                shiftRows.Add(new ShiftExcelRow
+                {
+                    ShiftId = Convert.ToInt64(r["ShiftId"]),
+                    ShiftName = Convert.ToString(r["ShiftName"]) ?? "Ca trực",
+                    StaffName = staffName,
+                    StartTime = FormatShiftTimestamp(rawStart),
+                    EndTime = isOpen ? "Đang trực" : FormatShiftTimestamp(rawEnd),
+                    StatusText = statusText,
+                    IsOpen = isOpen,
+                    VehiclesOut = Convert.ToInt32(r["TotalVehiclesOut"]),
+                    RevenueNormal = Convert.ToDecimal(r["RevenueNormal"]),
+                    RevenueMonthly = revMonthly,
+                    RevenueLostCard = Convert.ToDecimal(r["RevenueLostCard"]),
+                    TotalRevenue = Convert.ToDecimal(r["TotalRevenue"])
+                });
             }
+
+            List<HistoryExcelRow> historyRows = BuildFilteredHistoryExcelRows();
 
             using SaveFileDialog dialog = new SaveFileDialog
             {
-                Title = "Xuất báo cáo doanh thu ca trực ra file Excel (.csv)",
-                Filter = "CSV Files (*.csv)|*.csv",
-                FileName = $"BaoCaoDoanhThu_{DateTime.Now:yyyyMMdd_HHmmss}.csv",
-                DefaultExt = "csv",
+                Title = "Xuất báo cáo doanh thu & lịch sử xe ra file Excel (.xlsx)",
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                FileName = $"BaoCaoBaiXe_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                DefaultExt = "xlsx",
                 AddExtension = true
             };
 
@@ -489,25 +502,44 @@ public partial class SearchReportForm : Form
                 return false;
             }
 
-            File.WriteAllText(
+            (long _, string _, string adminName) = _repository.GetCurrentOpenShiftInfo();
+            string shiftFilterLabel = cboShiftFilter.SelectedItem?.ToString() ?? "Tất cả ca trực";
+
+            ExcelReportExporter.ExportWorkbook(
                 dialog.FileName,
-                csv.ToString(),
-                new UTF8Encoding(true)
+                adminName,
+                shiftFilterLabel,
+                shiftRows,
+                historyRows
             );
 
-            MessageBox.Show(
-                $"Đã xuất báo cáo {reports.Count} ca trực thành công!\n\nFile: {dialog.FileName}",
-                "Xuất báo cáo Excel (.csv)",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
+            DialogResult openNow = MessageBox.Show(
+                $"Đã xuất báo cáo Excel thành công ({shiftRows.Count} ca trực & {historyRows.Count} lượt xe)!\n\n" +
+                $"Đường dẫn: {dialog.FileName}\n\n" +
+                "Bạn có muốn mở file Excel vừa xuất lên xem ngay không?",
+                "Xuất báo cáo Excel (.xlsx)",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information,
+                MessageBoxDefaultButton.Button1
             );
+
+            if (openNow == DialogResult.Yes)
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true
+                };
+                Process.Start(startInfo);
+            }
+
             return true;
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                "Không thể xuất báo cáo:\n" + ex.Message,
-                "Lỗi xuất CSV",
+                "Không thể xuất báo cáo Excel:\n" + ex.Message,
+                "Lỗi xuất Excel (.xlsx)",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -515,16 +547,89 @@ public partial class SearchReportForm : Form
         }
     }
 
-    // Hàm bọc chuỗi an toàn cho từng ô dữ liệu CSV để tránh lỗi công thức khi mở trong Excel
-    private static string EscapeCsvField(object? value)
+    // Hàm tạo danh sách các dòng lịch sử xe phục vụ xuất sang Sheet 2 của file Excel
+    private List<HistoryExcelRow> BuildFilteredHistoryExcelRows()
     {
-        string text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? "";
-        if (text.Length > 0 && "=+-@\t\r".Contains(text[0]))
+        string keyword = txtSearchPlate.Text.Trim();
+        List<ParkingSession> sessions = _repository.getParkingHistory(keyword, "", "", "");
+        Dictionary<int, string> lostCardNotes = _repository.GetLostCardNotesBySessionId();
+        int selectedShiftIndex = cboShiftFilter.SelectedIndex;
+
+        List<HistoryExcelRow> result = new List<HistoryExcelRow>();
+        int stt = 1;
+
+        foreach (ParkingSession s in sessions)
         {
-            text = "'" + text;
+            if (selectedShiftIndex > 0 && !MatchesShiftWindow(s, selectedShiftIndex))
+            {
+                continue;
+            }
+
+            string vehicleTypeName = string.Equals(s.VehicleTypeId, "OTO", StringComparison.OrdinalIgnoreCase)
+                ? "Ô tô"
+                : "Xe máy";
+
+            bool isParking = string.Equals(s.Status, "Parking", StringComparison.OrdinalIgnoreCase) && !s.CheckOutTime.HasValue;
+            string timeOutDisplay = s.CheckOutTime.HasValue
+                ? s.CheckOutTime.Value.ToString("dd/MM/yyyy HH:mm")
+                : "Đang gửi";
+
+            bool isLostCard = false;
+            string noteDisplay;
+            if (lostCardNotes.TryGetValue(s.SessionId, out string? incidentDetail) &&
+                !string.IsNullOrWhiteSpace(incidentDetail))
+            {
+                noteDisplay = incidentDetail;
+                isLostCard = true;
+            }
+            else if (string.Equals(s.Status, "LostCard", StringComparison.OrdinalIgnoreCase) || s.PenaltyFee > 0m)
+            {
+                noteDisplay = "Mất thẻ";
+                isLostCard = true;
+            }
+            else if (s.IsMonthlyPass)
+            {
+                noteDisplay = "Vé tháng hợp lệ";
+            }
+            else
+            {
+                noteDisplay = "Vé lượt";
+            }
+
+            result.Add(new HistoryExcelRow
+            {
+                Index = stt++,
+                CardCode = s.CardCode,
+                LicensePlate = s.LicensePlate,
+                VehicleTypeName = vehicleTypeName,
+                SlotCode = s.SlotCode,
+                CheckInTime = s.CheckInTime.ToString("dd/MM/yyyy HH:mm"),
+                CheckOutTime = timeOutDisplay,
+                IsCurrentlyParking = isParking,
+                NoteText = noteDisplay,
+                IsLostCard = isLostCard,
+                PenaltyFee = isParking ? 0m : s.PenaltyFee,
+                TotalAmount = isParking ? 0m : s.TotalAmount
+            });
         }
 
-        return "\"" + text.Replace("\"", "\"\"") + "\"";
+        return result;
+    }
+
+    // Hàm định dạng chuỗi thời gian mở/đóng ca từ SQLite sang dạng dd/MM/yyyy HH:mm dễ đọc
+    private static string FormatShiftTimestamp(string rawTimestamp)
+    {
+        if (string.IsNullOrWhiteSpace(rawTimestamp))
+        {
+            return "—";
+        }
+
+        if (DateTime.TryParse(rawTimestamp, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed))
+        {
+            return parsed.ToString("dd/MM/yyyy HH:mm");
+        }
+
+        return rawTimestamp;
     }
 
     // Hàm xử lý khi nhấn Kết thúc ca: hỏi người dùng có xuất file Excel không, tổng kết ca trong CSDL rồi đăng xuất
@@ -569,6 +674,9 @@ public partial class SearchReportForm : Form
 
             decimal totalRevenue = Convert.ToDecimal(report["TotalRevenue"]);
             decimal revenueNormal = Convert.ToDecimal(report["RevenueNormal"]);
+            decimal revenueMonthly = report.ContainsKey("RevenueMonthly")
+                ? Convert.ToDecimal(report["RevenueMonthly"])
+                : 0m;
             decimal revenueLostCard = Convert.ToDecimal(report["RevenueLostCard"]);
             string shiftName = Convert.ToString(report["ShiftName"]) ?? "Ca trực";
             int vehiclesOut = Convert.ToInt32(report["TotalVehiclesOut"]);
@@ -577,10 +685,11 @@ public partial class SearchReportForm : Form
                 $"Thông tin tổng kết {shiftName} (Mã ca #{shiftId}):\n" +
                 $"• Số lượt xe ra: {vehiclesOut} lượt\n" +
                 $"• Doanh thu vé lượt: {revenueNormal:N0} đ\n" +
+                $"• Doanh thu vé tháng: {revenueMonthly:N0} đ\n" +
                 $"• Tiền phạt mất thẻ: {revenueLostCard:N0} đ\n" +
                 $"• Tổng doanh thu ca: {totalRevenue:N0} đ\n\n" +
-                "Bạn có muốn xuất báo cáo ra file Excel (.csv) trước khi tổng kết ca và đăng xuất không?\n\n" +
-                "• Chọn Yes: Tổng kết ca, xuất file Excel (.csv) rồi Đăng xuất\n" +
+                "Bạn có muốn xuất báo cáo ra file Excel (.xlsx) trước khi tổng kết ca và đăng xuất không?\n\n" +
+                "• Chọn Yes: Tổng kết ca, xuất file Excel (.xlsx) rồi Đăng xuất\n" +
                 "• Chọn No: Tổng kết ca rồi Đăng xuất ngay\n" +
                 "• Chọn Cancel: Hủy thao tác, tiếp tục làm việc",
                 "Kết thúc ca & Xuất báo cáo Excel",
@@ -608,7 +717,7 @@ public partial class SearchReportForm : Form
 
             if (exportChoice == DialogResult.Yes)
             {
-                ExportShiftReportsToCsv();
+                ExportShiftReportsToExcel();
             }
 
             MessageBox.Show(
@@ -630,6 +739,7 @@ public partial class SearchReportForm : Form
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
+            return;
         }
     }
 }

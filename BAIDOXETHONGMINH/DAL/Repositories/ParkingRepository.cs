@@ -1354,8 +1354,18 @@ public class ParkingRepository
                             ELSE 0
                         END
                     ), 0) AS RevenueLostCard,
-                    COALESCE(SUM(p.Amount), 0) AS TotalRevenue
+                    COALESCE(SUM(p.Amount), 0) AS TotalRevenue,
+                    COALESCE(u.FullName, 'Admin Tính') AS StaffName,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN p.TransactionType IN ('MonthlyPassNew', 'MonthlyPassRenew')
+                            THEN p.Amount
+                            ELSE 0
+                        END
+                    ), 0) AS RevenueMonthly
                 FROM WorkShifts s
+                LEFT JOIN Users u
+                    ON s.UserId = u.UserId
                 LEFT JOIN PaymentTransactions p
                     ON s.ShiftId = p.ShiftId
                 WHERE s.ShiftId = @ShiftId
@@ -1365,7 +1375,8 @@ public class ParkingRepository
                     s.StartTime,
                     s.EndTime,
                     s.Status,
-                    s.TotalVehiclesOut;";
+                    s.TotalVehiclesOut,
+                    u.FullName;";
 
             using (SqliteCommand cmd = conn.CreateCommand())
             {
@@ -1385,6 +1396,8 @@ public class ParkingRepository
                         result["RevenueNormal"] = reader.IsDBNull(6) ? 0m : reader.GetDecimal(6);
                         result["RevenueLostCard"] = reader.IsDBNull(7) ? 0m : reader.GetDecimal(7);
                         result["TotalRevenue"] = reader.IsDBNull(8) ? 0m : reader.GetDecimal(8);
+                        result["StaffName"] = reader.IsDBNull(9) ? "Admin Tính" : reader.GetString(9);
+                        result["RevenueMonthly"] = reader.IsDBNull(10) ? 0m : reader.GetDecimal(10);
                     }
                 }
             }

@@ -189,7 +189,7 @@ partial class SearchReportForm
         btnSearch.Cursor = Cursors.Hand;
         btnSearch.Click += BtnSearch_Click;
 
-        btnExportCsv.Text = "Xuất Excel (.csv)";
+        btnExportCsv.Text = "Xuất Excel (.xlsx)";
         btnExportCsv.Location = new Point(822, 30);
         btnExportCsv.Size = new Size(150, 34);
         btnExportCsv.Anchor = AnchorStyles.Top | AnchorStyles.Right;
